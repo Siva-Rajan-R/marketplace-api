@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic
+pydantic[email]
+sqlalchemy
+asyncpg
+alembic
+httpx
+argon2-cffi
+pyjwt
+cryptography
+icecream
+python-dotenv
+orjson

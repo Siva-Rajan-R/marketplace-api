@@ -1,0 +1,11 @@
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+
+DEB_EMAIL_SERVICE_API_KEY=os.getenv("DEB_EMAIL_SERVICE_API_KEY")
+DEB_EMAIL_SERVICE_API_URL=os.getenv("DEB_EMAIL_SERVICE_API_URL")
+
+DEB_AUTH_CLIENT_SECRET=os.getenv("DEB_AUTH_CLIENT_SECRET")
+DEB_AUTH_API_KEY=os.getenv("DEB_AUTH_API_KEY")
+DEB_AUTH_API_URL=os.getenv("DEB_AUTH_API_URL")
