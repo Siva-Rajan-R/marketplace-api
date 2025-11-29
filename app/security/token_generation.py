@@ -6,10 +6,12 @@ from datetime import datetime, timedelta,timezone
 class JwtTokenGenerator(TokenModel):
     @staticmethod
     def create_token(data: dict, jwt_secret:str,jwt_alg:str,exp_min:int=0,exp_day:int=0,exp_sec:int=0)-> str | HTTPException:
-        data['exp']=datetime.now(tz=timezone.utc)+timedelta(days=exp_day,minutes=exp_min,seconds=exp_sec)
+        temp={'data':data.copy()}
+        temp['exp']=datetime.now(tz=timezone.utc)+timedelta(days=exp_day,minutes=exp_min,seconds=exp_sec)
+        ic(temp)
         try:
             return pyjwt.encode(
-                payload=data,
+                payload=temp,
                 key=jwt_secret,
                 algorithm=jwt_alg
             )

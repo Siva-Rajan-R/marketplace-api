@@ -1,8 +1,10 @@
-from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,select,update,delete,insert,func,BaseCrud,ResponseContentTypDict,ORJSONResponse,or_,and_
+from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,select,update,delete,insert,func,BaseCrud,ResponseContentTypDict,ORJSONResponse,or_,and_,case
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
 from app.database.models.pg_models.accounts import Accounts
+from app.database.models.pg_models.employees import Employees
+from app.database.models.pg_models.shops import Shops
 from app.utils.uuid_generator import generate_uuid
 
 
@@ -16,7 +18,8 @@ class AccountCrud(BaseCrud):
         account=(await self.session.execute(
             select(
                 Accounts.id,
-                Accounts.email
+                Accounts.email,
+                Accounts.role
             ).where(
                 or_(
                     Accounts.id==account_id_email,
@@ -185,3 +188,43 @@ class AccountCrud(BaseCrud):
         ).mappings().one_or_none()
 
         return {'account':account_toget}
+    
+
+    @catch_errors
+    async def get_role(self,account_id:str,shop_id:str):
+        employee_role=(await self.session.execute(
+            select(Employees.role)
+            .where(
+                and_(
+                    Employees.account_id==account_id,
+                    Employees.shop_id==shop_id
+                ) 
+            )
+        )).scalar_one_or_none()
+
+        if employee_role:
+            return employee_role
+        
+        owner=(
+            await self.session.execute(
+                select(
+                    Shops.id
+                )
+                .where(
+                    Shops.id==shop_id,
+                    Shops.account_id==account_id
+                )
+            )
+        ).scalar_one_or_none()
+
+        if owner:
+            return RoleEnum.SUPER_ADMIN.value
+
+        raise HTTPException(
+            status_code=404,
+            detail=ResponseContentTypDict(
+                status=404,
+                msg="Error : Unauthorized",
+                description="Invalid user or shop id"
+            )
+        )

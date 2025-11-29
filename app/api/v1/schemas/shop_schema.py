@@ -9,6 +9,7 @@ class AddShopSchema(BaseModel):
     address:ShopAddressTypDict
     gst_no:Optional[str]
     shop_type:ShopTypeEnum
+    mobile_number:str
 
 class UpdateShopSchema(BaseModel):
     shop_id:str
@@ -17,3 +18,4 @@ class UpdateShopSchema(BaseModel):
     address:ShopAddressTypDict
     gst_no:Optional[str]
     shop_type:ShopTypeEnum
+    mobile_number:str

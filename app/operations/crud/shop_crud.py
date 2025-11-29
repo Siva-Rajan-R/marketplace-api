@@ -5,6 +5,8 @@ from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
 from app.database.models.pg_models.shops import Shops
 from app.data_formats.enums.shop_enum import ShopTypeEnum
 from app.data_formats.typed_dicts.shop_typdict import ShopAddressTypDict
+from app.database.models.pg_models.employees import Employees
+from app.database.models.pg_models.accounts import Accounts
 from app.utils.uuid_generator import generate_uuid
 
 
@@ -18,7 +20,7 @@ class ShopCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
-    async def add(self,name:str,description:str,address:ShopAddressTypDict,shop_type:ShopTypeEnum,gst_no:Optional[str]=None):
+    async def add(self,name:str,description:str,address:ShopAddressTypDict,mobile_number:str,shop_type:ShopTypeEnum,gst_no:Optional[str]=None):
         shop_id:str=generate_uuid()
         shop_toadd=Shops(
             id=shop_id,
@@ -28,7 +30,8 @@ class ShopCrud(BaseCrud):
             gst_no=gst_no,
             account_id=self.current_user_id,
             is_verified=False,
-            address=address
+            address=address,
+            mobile_number=mobile_number
             
         )
         self.session.add(shop_toadd)
@@ -48,7 +51,7 @@ class ShopCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
-    async def update(self,shop_id:str,name:str,description:str,address:ShopAddressTypDict,shop_type:ShopTypeEnum,gst_no:Optional[str]=None):
+    async def update(self,shop_id:str,name:str,description:str,mobile_number:str,address:ShopAddressTypDict,shop_type:ShopTypeEnum,gst_no:Optional[str]=None):
         shop_toupdate=update(
             Shops
         ).where(
@@ -58,7 +61,8 @@ class ShopCrud(BaseCrud):
             description=description,
             type=shop_type.value,
             gst_no=gst_no,
-            address=address
+            address=address,
+            mobile_number=mobile_number
         ).returning(Shops.id)
 
         is_updated=(await self.session.execute(shop_toupdate)).scalar_one_or_none()
@@ -139,7 +143,9 @@ class ShopCrud(BaseCrud):
                     Shops.address.label("shop_address"),
                     Shops.gst_no.label("shop_gst_no"),
                     Shops.created_at.label("shop_created_at"),
-                    Shops.type.label("shop_type")
+                    Shops.type.label("shop_type"),
+                    Shops.is_verified.label("shop_verified"),
+                    Shops.mobile_number.label("shop_mobile_number")
                 )
                 .where(
                     Shops.account_id==self.current_user_id
@@ -162,7 +168,9 @@ class ShopCrud(BaseCrud):
                     Shops.address.label("shop_address"),
                     Shops.gst_no.label("shop_gst_no"),
                     Shops.created_at.label("shop_created_at"),
-                    Shops.type.label("shop_type")
+                    Shops.type.label("shop_type"),
+                    Shops.is_verified.label("shop_verified"),
+                    Shops.mobile_number.label("shop_mobile_number")
                 )
                 .where(
                     and_(
@@ -174,3 +182,44 @@ class ShopCrud(BaseCrud):
         ).mappings().one_or_none()
 
         return {'shop':shop_toget}
+    
+    @catch_errors
+    async def get_by_account(self,account_id:str):
+        owned_q = (
+            select(
+                Shops.id.label("shop_id"),
+                Shops.name.label("shop_name"),
+                Shops.description.label("shop_description"),
+                Shops.address.label("shop_address"),
+                Shops.gst_no.label("shop_gst_no"),
+                Shops.created_at.label("shop_created_at"),
+                Shops.type.label("shop_type"),
+                Shops.is_verified.label("shop_verified"),
+                Shops.mobile_number.label("shop_mobile_number")
+            )
+            .where(Shops.account_id == account_id)
+        )
+
+    # Shops where account is an employee
+        employee_q = (
+            select(
+                Shops.id.label("shop_id"),
+                Shops.name.label("shop_name"),
+                Shops.description.label("shop_description"),
+                Shops.address.label("shop_address"),
+                Shops.gst_no.label("shop_gst_no"),
+                Shops.created_at.label("shop_created_at"),
+                Shops.type.label("shop_type"),
+                Shops.is_verified.label("shop_verified"),
+                Shops.mobile_number.label("shop_mobile_number")
+            )
+            .join(Employees, Employees.shop_id == Shops.id)
+            .where(Employees.account_id == account_id)
+        )
+
+    # Combine both using UNION (avoid duplicates)
+        final_q = owned_q.union(employee_q)
+
+        result = await self.session.execute(final_q)
+
+        return {'shops':result.mappings().all()}

@@ -18,7 +18,8 @@ class EmployeeCrud(BaseCrud):
         employee=(await self.session.execute(
             select(
                 Employees.id,
-                Employees.shop_id
+                Employees.shop_id,
+                Employees.account_id
             ).where(
                 and_(
                     Employees.account_id==account_id,
@@ -46,7 +47,7 @@ class EmployeeCrud(BaseCrud):
                 id=account_id,
                 name=name,
                 email=email,
-                role=self.current_user_role
+                role=role
             )
 
             tabeles_toadd.append(account_toadd)
@@ -109,8 +110,10 @@ class EmployeeCrud(BaseCrud):
         ).values(
             role=role
         ).returning(Employees.id)
-        
+
         is_updated=(await self.session.execute(employee_toupdate)).scalar_one_or_none()
+
+        
         
         response_content={
             "detail":ResponseContentTypDict(

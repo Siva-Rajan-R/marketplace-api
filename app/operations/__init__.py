@@ -2,7 +2,7 @@ from fastapi.exceptions import HTTPException
 from fastapi.responses import ORJSONResponse
 from icecream import ic
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select,update,delete,insert,func,and_,or_
+from sqlalchemy import select,update,delete,insert,func,and_,or_,case
 from typing import Optional,List
 from pydantic import EmailStr
 from dataclasses import dataclass

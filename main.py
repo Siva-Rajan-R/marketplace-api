@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.api.v1.routes import auth,account_route,inventory_route,product_route,order_route,shop_route,employee_route
+from starlette.middleware.cors import CORSMiddleware
 from app.database.configs.pg_config import init_pg_db
 from contextlib import asynccontextmanager
 from icecream import ic
@@ -67,8 +68,13 @@ app.include_router(order_route.router)
 
 
 # regisetr the middlewared
-
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_headers=["*"],
+    allow_methods=["*"],
+    allow_origins=["*"],
+)
 
 
 # register custom responses

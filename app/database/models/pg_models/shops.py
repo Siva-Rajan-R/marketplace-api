@@ -7,6 +7,7 @@ class Shops(BASE):
     description=Column(String,nullable=False)
     address=Column(JSONB,nullable=False)
     gst_no=Column(String,nullable=True)
+    mobile_number=Column(String,nullable=False)
     type=Column(String,nullable=False)
     is_verified=Column(Boolean,nullable=False)
     account_id=Column(String,ForeignKey("accounts.id",ondelete="CASCADE"),nullable=False)
