@@ -4,7 +4,7 @@ class OrderStatusEnum(str, Enum):
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
     COMPLETED = "COMPLETED"
-    CANCELLED = "CANCELLED"
+    CANCELED = "CANCELED"
 
 class OrderOriginEnum(str, Enum):
     ONLINE = "ONLINE"

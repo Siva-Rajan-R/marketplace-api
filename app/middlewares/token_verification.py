@@ -87,7 +87,7 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
             ic("verified token via redis")
             token_data['role']=RoleEnum.SUPER_ADMIN
             
-        await session.close_all()
+        await session.close()
             
         return token_data
     

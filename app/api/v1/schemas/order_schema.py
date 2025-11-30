@@ -20,7 +20,6 @@ class UpdateOrderSchema(BaseModel):
 
 
 class UpdateOrderStatus(BaseModel):
-    shop_id:str
     order_id:str
     order_status:OrderStatusEnum
     order_origin:OrderOriginEnum

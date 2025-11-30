@@ -47,7 +47,7 @@ class InventoryCrud(BaseCrud):
                     status=404,
                     succsess=False,
                     msg="Error : Adding product to inventory",
-                    description="Product with given barcode already exists in inventory"
+                    description="Product is already exists"
                 )
             )
         product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role)

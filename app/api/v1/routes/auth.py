@@ -57,21 +57,23 @@ async def get_tokens(data:AuthGetTokens,request:Request,token_data:dict=Depends(
         jwt_alg=JWT_TOKEN_ALGORITHM,
         jwt_secret=JWT_ACCESS_TOKEN_SECRET,
         exp_min=15,
-        data={'id':token_data['id'],'role':role,'shop_id':data.shop_id,'user_name':account_info['name'],'profile_url':account_info['profile_picture']}
+        data={'id':token_data['id'],'role':role,'shop_id':data.shop_id}
     )
 
     refresh_token=JwtTokenGenerator.create_token(
         jwt_alg=JWT_TOKEN_ALGORITHM,
         jwt_secret=JWT_REFRESH_TOKEN_SECRET,
         exp_day=7,
-        data={'id':token_data['id'],'role':role,'shop_id':data.shop_id,'user_name':account_info['name'],'profile_url':account_info['profile_picture']}
+        data={'id':token_data['id'],'role':role,'shop_id':data.shop_id}
     )
 
     await set_redis(key=f"AUTH-{token_data['id']}",value=f"AUTH-{request.client.host}",expire=180)
 
     return {
         'access_token':access_token,
-        'refresh_token':refresh_token
+        'refresh_token':refresh_token,
+        'user_name':account_info['name'],
+        'profile_url':account_info['profile_picture']
     }
 
 

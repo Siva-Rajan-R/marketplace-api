@@ -57,8 +57,8 @@ class OrderCrud(BaseCrud):
 
 
     @catch_errors
-    @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.ADMIN.value,RoleEnum.SUPER_ADMIN.value,RoleEnum.USER.value])
+    @start_db_transaction
     async def update_status(
         self,
         shop_id:str,
@@ -67,6 +67,7 @@ class OrderCrud(BaseCrud):
         order_origin:OrderOriginEnum,
     ):
         
+        ic(order_origin,order_status)
         order_sts_toupdate=update(
             Orders
         ).where(
@@ -80,6 +81,7 @@ class OrderCrud(BaseCrud):
 
         is_sts_updated=(await self.session.execute(order_sts_toupdate)).scalar_one_or_none()
 
+        ic(is_sts_updated)
 
         if not is_sts_updated:
             raise HTTPException(
