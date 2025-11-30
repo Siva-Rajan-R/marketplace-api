@@ -31,7 +31,25 @@ class InventoryCrud(BaseCrud):
         
     ):
         product_category=product_category.value
+        is_exists=(await self.session.execute(
+            select(Inventory.id).where(
+                and_(
+                    Inventory.barcode==barcode,
+                    Inventory.shop_id==shop_id
+                )
+            )
+        )).scalar_one_or_none()
 
+        if is_exists:
+            raise HTTPException(
+                status_code=404,
+                detail=ResponseContentTypDict(
+                    status=404,
+                    succsess=False,
+                    msg="Error : Adding product to inventory",
+                    description="Product with given barcode already exists in inventory"
+                )
+            )
         product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role)
         product_info=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
 
@@ -105,7 +123,7 @@ class InventoryCrud(BaseCrud):
     ):
         product_category=product_category.value
         product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role)
-        product_info=await product_obj.get_byid(product_barcode_id=barcode)['product'] if (not barcode or barcode.strip()!="") else None
+        product_info=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
 
         if product_info:
 
