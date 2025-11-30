@@ -22,12 +22,11 @@ async def add_inventory(data:AddInventorySchema,session:AsyncSession=Depends(get
         sell_price=data.sell_price,
         barcode=data.bar_code,
         cur_user_id=token_data['id'],
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         product_name=data.product_name,
         product_description=data.product_description,
         product_category=data.product_category,
-        image_urls=data.image_urls,
-        product_id=data.product_id
+        image_urls=data.image_urls
     )
 
 @router.put("/inventories")
@@ -41,12 +40,11 @@ async def update_inventory(data:UpdateInventorySchema,session:AsyncSession=Depen
         buy_price=data.buy_price,
         sell_price=data.sell_price,
         barcode=data.bar_code,
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         product_name=data.product_name,
         product_description=data.product_description,
         product_category=data.product_category,
-        image_urls=data.image_urls,
-        product_id=data.product_id
+        image_urls=data.image_urls
     )
 
 @router.delete("/inventories/{inventory_id}")

@@ -12,7 +12,7 @@ from icecream import ic
 from dotenv import load_dotenv
 load_dotenv()
 
-FRONTEND_URL=os.getenv("FRONTENT_URL")
+FRONTEND_URL=os.getenv("FRONTEND_URL")
 
 router=APIRouter(
     tags=["Authentication"]

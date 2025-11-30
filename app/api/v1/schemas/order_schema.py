@@ -4,7 +4,6 @@ from app.data_formats.typed_dicts.order_typdict import OrderItemTypDict
 
 
 class AddOrderSchema(BaseModel):
-    shop_id:str
     orders: List[OrderItemTypDict]
     order_total_price: float
     customer_number: Optional[str]
@@ -12,7 +11,6 @@ class AddOrderSchema(BaseModel):
     order_origin: OrderOriginEnum
 
 class UpdateOrderSchema(BaseModel):
-    shop_id:str
     order_id:str
     orders: List[OrderItemTypDict]
     order_total_price: float

@@ -12,7 +12,6 @@ class AddShopSchema(BaseModel):
     mobile_number:str
 
 class UpdateShopSchema(BaseModel):
-    shop_id:str
     name: str
     description: str
     address:ShopAddressTypDict

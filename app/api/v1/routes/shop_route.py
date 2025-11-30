@@ -33,7 +33,7 @@ async def update_shops(data:UpdateShopSchema,session:AsyncSession=Depends(get_pg
         current_user_role=token_data['role'],
         current_user_id=token_data['id']
     ).update(
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         name=data.name,
         description=data.description,
         address=data.address,

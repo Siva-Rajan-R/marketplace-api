@@ -12,3 +12,4 @@ cryptography
 icecream
 python-dotenv
 orjson
+redis

@@ -27,8 +27,7 @@ class InventoryCrud(BaseCrud):
         product_name:str,
         product_description:str,
         product_category:ProductCategoryEnum,
-        image_urls:Optional[List[str]],
-        product_id:Optional[str]=None,
+        image_urls:Optional[List[str]]
         
     ):
         product_category=product_category.value
@@ -94,7 +93,6 @@ class InventoryCrud(BaseCrud):
     async def update(
         self,
         inventory_id:str,
-        product_id:str,
         stocks:int,
         buy_price:float,
         sell_price:float,
@@ -107,7 +105,7 @@ class InventoryCrud(BaseCrud):
     ):
         product_category=product_category.value
         product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role)
-        product_info=await product_obj.get_byid(product_barcode_id=product_id)['product'] if (not product_id or product_id.strip()!="") else None
+        product_info=await product_obj.get_byid(product_barcode_id=barcode)['product'] if (not barcode or barcode.strip()!="") else None
 
         if product_info:
 
@@ -136,7 +134,6 @@ class InventoryCrud(BaseCrud):
         ).where(
             and_(
                 Inventory.id==inventory_id,
-                Inventory.product_id==product_id,
                 Inventory.barcode==barcode,
                 Inventory.shop_id==shop_id
             )

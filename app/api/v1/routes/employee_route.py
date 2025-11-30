@@ -19,7 +19,7 @@ async def add_employee(data:AddEmployeeSchema,session:AsyncSession=Depends(get_p
         current_user_role=token_data['role'],
         current_user_id=token_data['id']
     ).add(
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         email=data.email,
         name=data.name,
         role=data.role
@@ -34,7 +34,7 @@ async def update_employee_role(data:UpdateEmployeeSchema,request:Request,session
         current_user_id=token_data['id']
     ).update_role(
         account_id=data.account_id,
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         employee_id=data.employee_id,
         role=data.role
     )

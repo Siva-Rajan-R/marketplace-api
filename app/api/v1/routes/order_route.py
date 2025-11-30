@@ -17,7 +17,7 @@ async def add_order(data:AddOrderSchema,session:AsyncSession=Depends(get_pg_asyn
         session=session,
         current_user_role=token_data['role']
     ).add(
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         orders=data.orders,
         total_price=data.order_total_price,
         order_status=data.order_status,
@@ -32,7 +32,7 @@ async def update_order_status(data:UpdateOrderStatus,session:AsyncSession=Depend
         session=session,
         current_user_role=token_data['role']
     ).update_status(
-        shop_id=data.shop_id,
+        shop_id=token_data['shop_id'],
         order_id=data.order_id,
         order_status=data.order_status,
         order_origin=data.order_origin
