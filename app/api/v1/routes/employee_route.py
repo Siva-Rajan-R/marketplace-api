@@ -54,13 +54,13 @@ async def delete_employee(account_id:str,employee_id:str,request:Request,session
     )
 
 @router.get("/employees")
-async def get_employee(shop_id:str=Query(...),q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def get_employee(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
     return await EmployeeCrud(
         session=session,
         current_user_role=token_data['role'],
         current_user_id=token_data['id']
     ).get(
-        shop_id=shop_id,
+        shop_id=token_data['shop_id'],
         query=q,
         offset=offset,
         limit=limit

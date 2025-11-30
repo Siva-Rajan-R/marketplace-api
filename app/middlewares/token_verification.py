@@ -42,16 +42,17 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
         # checking the token for temporiry , only for getting token not for other routes
         is_temp_token=token_data.get("is_temp",None)
         ic(is_temp_token)
-        if is_temp_token and (request.url.path not in ["/auth/tokens","/shops/account"] and (request.url.path=='/shops' and request.method.lower()!="post")):
-            raise HTTPException(
-                status_code=401,
-                detail=ResponseContentTypDict(
-                    status=401,
-                    succsess=False,
-                    msg="Error : Unauthorized",
-                    description="Not authenticated"
+        if is_temp_token:
+            if (request.url.path not in ["/auth/tokens","/shops/account"] and (request.url.path=='/shops' and request.method.lower()!="post")):
+                raise HTTPException(
+                    status_code=401,
+                    detail=ResponseContentTypDict(
+                        status=401,
+                        succsess=False,
+                        msg="Error : Unauthorized",
+                        description="Not authenticated"
+                    )
                 )
-            )
         
         
         is_exists_redis=await get_redis(F"AUTH-{token_data['id']}") #it returns the ip of the user based on theri account id

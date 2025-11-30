@@ -189,7 +189,8 @@ class EmployeeCrud(BaseCrud):
                     Employees.id.label("employee_id"),
                     Accounts.name.label('employee_name'),
                     Accounts.email.label("employee_email"),
-                    Employees.role.label("employe_role"),
+                    Employees.role.label("employee_role"),
+                    Employees.account_id,
                     Employees.shop_id.label("employee_shop_id"),
                     Shops.name.label("employee_shop_name")
                 )
@@ -219,7 +220,8 @@ class EmployeeCrud(BaseCrud):
                     Employees.id.label("employee_id"),
                     Accounts.name.label('employee_name'),
                     Accounts.email.label("employee_email"),
-                    Employees.role.label("employe_role"),
+                    Employees.role.label("employee_role"),
+                    Employees.account_id,
                     Employees.shop_id.label("employee_shop_id"),
                     Shops.name.label("employee_shop_name")
                 )
