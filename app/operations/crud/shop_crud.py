@@ -145,7 +145,8 @@ class ShopCrud(BaseCrud):
                     Shops.created_at.label("shop_created_at"),
                     Shops.type.label("shop_type"),
                     Shops.is_verified.label("shop_verified"),
-                    Shops.mobile_number.label("shop_mobile_number")
+                    Shops.mobile_number.label("shop_mobile_number"),
+                    Shops.account_id.label("shop_account_id")
                 )
                 .where(
                     Shops.account_id==self.current_user_id
@@ -170,7 +171,8 @@ class ShopCrud(BaseCrud):
                     Shops.created_at.label("shop_created_at"),
                     Shops.type.label("shop_type"),
                     Shops.is_verified.label("shop_verified"),
-                    Shops.mobile_number.label("shop_mobile_number")
+                    Shops.mobile_number.label("shop_mobile_number"),
+                    Shops.account_id.label("shop_account_id")
                 )
                 .where(
                     and_(

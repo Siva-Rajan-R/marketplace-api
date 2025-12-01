@@ -25,6 +25,8 @@ async def add_employee(data:AddEmployeeSchema,session:AsyncSession=Depends(get_p
         role=data.role
     )
 
+
+
 @router.put("/employees/role")
 async def update_employee_role(data:UpdateEmployeeSchema,request:Request,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
     await unlink_redis(key=[f"AUTH-{data.account_id}"])
