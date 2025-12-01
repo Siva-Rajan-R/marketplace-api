@@ -1,4 +1,4 @@
-from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,select,update,delete,insert,func,BaseCrud,or_,and_,ORJSONResponse,ResponseContentTypDict
+from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,select,update,delete,insert,func,BaseCrud,or_,and_,ORJSONResponse,ResponseContentTypDict,literal
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
@@ -80,7 +80,7 @@ class EmployeeCrud(BaseCrud):
 
         response_content=ResponseContentTypDict(
             status=201,
-            msg="Employee created successfully",
+            msg="Employee created successfully, Waiting for confirmation",
             succsess=True
         )
 
@@ -192,7 +192,8 @@ class EmployeeCrud(BaseCrud):
                     Employees.role.label("employee_role"),
                     Employees.account_id,
                     Employees.shop_id.label("employee_shop_id"),
-                    Shops.name.label("employee_shop_name")
+                    Shops.name.label("employee_shop_name"),
+                    literal(True).label("is_accepted")
                 )
                 .join(Accounts,Accounts.id==Employees.account_id,isouter=True)
                 .join(Shops,Shops.id==Employees.shop_id,isouter=True)
@@ -223,7 +224,9 @@ class EmployeeCrud(BaseCrud):
                     Employees.role.label("employee_role"),
                     Employees.account_id,
                     Employees.shop_id.label("employee_shop_id"),
-                    Shops.name.label("employee_shop_name")
+                    Shops.name.label("employee_shop_name"),
+                    literal(True).label("is_accepted")
+    
                 )
                 .join(Accounts,Accounts.id==Employees.account_id,isouter=True)
                 .join(Shops,Shops.id==Employees.shop_id,isouter=True)

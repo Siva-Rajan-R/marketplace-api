@@ -217,9 +217,19 @@ class ShopCrud(BaseCrud):
             .where(Employees.account_id == account_id)
         )
 
-    # Combine both using UNION (avoid duplicates)
+        is_owner=(await self.session.execute(select(Shops.id).where(Shops.account_id==account_id).limit(1))).scalar_one_or_none()
+
+        # Combine both using UNION (avoid duplicates)
         final_q = owned_q.union(employee_q)
 
-        result = await self.session.execute(final_q)
+        result = (await self.session.execute(final_q)).mappings().all()
 
-        return {'shops':result.mappings().all()}
+        if is_owner:
+            is_owner=True
+        else:
+            if result==[]:
+                is_owner=True
+            else:
+                is_owner=False
+
+        return {'shops':result,"is_owner":is_owner}

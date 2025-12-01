@@ -43,7 +43,8 @@ app=FastAPI(
     docs_url=docs_url,
     redoc_url=redoc_url,
     openapi_url=openapi_url,
-    debug=debug
+    debug=debug,
+    
 )
 
 
