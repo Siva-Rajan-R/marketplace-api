@@ -1,4 +1,4 @@
-from fastapi import APIRouter,Depends,Query,Request
+from fastapi import APIRouter,Depends,Query,Request,BackgroundTasks
 from app.operations.crud.employee_crud import EmployeeCrud,RoleEnum
 from ..schemas.employee_schema import AddEmployeeSchema,UpdateEmployeeSchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
@@ -13,7 +13,7 @@ router=APIRouter(
 role=RoleEnum.SUPER_ADMIN
 
 @router.post("/employees")
-async def add_employee(data:AddEmployeeSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def add_employee(data:AddEmployeeSchema,request:Request,bgt:BackgroundTasks,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
     return await EmployeeCrud(
         session=session,
         current_user_role=token_data['role'],
@@ -22,7 +22,9 @@ async def add_employee(data:AddEmployeeSchema,session:AsyncSession=Depends(get_p
         shop_id=token_data['shop_id'],
         email=data.email,
         name=data.name,
-        role=data.role
+        role=data.role,
+        base_url=str(request.base_url),
+        bgt=bgt
     )
 
 

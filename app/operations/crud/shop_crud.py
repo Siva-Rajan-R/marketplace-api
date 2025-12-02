@@ -16,6 +16,16 @@ class ShopCrud(BaseCrud):
     current_user_role:RoleEnum
     current_user_id:str
 
+    @catch_errors
+    async def verify_isexists(self,shop_id:str):
+        shop=(await self.session.execute(
+            select(
+                Shops.id,
+                Shops.name,
+            ).where(Shops.id==shop_id)
+        )).mappings().one_or_none()
+
+        return shop
 
     @catch_errors
     @start_db_transaction
@@ -216,7 +226,7 @@ class ShopCrud(BaseCrud):
                 Shops.mobile_number.label("shop_mobile_number")
             )
             .join(Employees, Employees.shop_id == Shops.id)
-            .where(Employees.account_id == account_id)
+            .where(and_(Employees.account_id == account_id,Employees.is_accepted==True))
         )
 
         is_owner=(await self.session.execute(select(Shops.id).where(Shops.account_id==account_id).limit(1))).scalar_one_or_none()

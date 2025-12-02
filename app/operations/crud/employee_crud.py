@@ -1,11 +1,15 @@
-from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,select,update,delete,insert,func,BaseCrud,or_,and_,ORJSONResponse,ResponseContentTypDict,literal
+from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,select,update,delete,insert,func,BaseCrud,or_,and_,ORJSONResponse,ResponseContentTypDict,literal,BackgroundTasks
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
 from app.database.models.pg_models.employees import Employees
 from .account_crud import AccountCrud,Accounts
+from .shop_crud import ShopCrud
 from app.database.models.pg_models.shops import Shops
 from app.utils.uuid_generator import generate_uuid
+from app.services.email_service import DebEmailService
+from app.database.configs.redis_config import set_redis
+from app.templates.emails_template.employee_template import get_employee_accept_email_content
 
 @dataclass(frozen=True)
 class EmployeeCrud(BaseCrud):
@@ -35,7 +39,7 @@ class EmployeeCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
-    async def add(self,shop_id:str,name:str,email:EmailStr,role:RoleEnum):
+    async def add(self,shop_id:str,name:str,email:EmailStr,role:RoleEnum,bgt:BackgroundTasks,base_url:str):
         
         tabeles_toadd=[]
         account_id=None
@@ -50,6 +54,8 @@ class EmployeeCrud(BaseCrud):
                 role=role
             )
 
+            name=None
+
             tabeles_toadd.append(account_toadd)
         else:
             account_id=account['id']
@@ -63,21 +69,57 @@ class EmployeeCrud(BaseCrud):
                         description="Employee already exists"
                     )
                 )
-
             
+            if account['name']==name:
+                name=None
+  
+        shop=(await ShopCrud(session=self.session,current_user_id="",current_user_role=RoleEnum.SUPER_ADMIN).verify_isexists(shop_id=shop_id))
+
+        if not shop:
+            raise HTTPException(
+                    status_code=404,
+                    detail=ResponseContentTypDict(
+                        status=404,
+                        msg="Error : Creating employee",
+                        description="Shop id not found"
+                    )
+                )
+        
+
         employee_id:str=generate_uuid()
         employee_toadd=Employees(
             id=employee_id,
             account_id=account_id,
             added_by=self.current_user_id,
             shop_id=shop_id,
-            role=role.value
+            role=role.value,
+            employee_name=name,
+            is_accepted=False
         )
+
 
         tabeles_toadd.append(employee_toadd)
 
         self.session.add_all(tabeles_toadd)
 
+        employee_accept_id=generate_uuid()
+        email_content=get_employee_accept_email_content(
+            shop_name=shop['name'],
+            role=role.value,
+            accept_url=f"{base_url}auth/accept/employee/{employee_accept_id}",
+            company_name="Marketplace",
+            year=2025
+        )
+
+        bgt.add_task(
+            DebEmailService.send,
+            recivers_email=[email],
+            subject=f"Your'e invited for the shop of {shop['name']}",
+            body=email_content,
+            is_html=True   
+        )
+
+        await set_redis(key=f"EMPLOYEE-ACCEPT-ID-{employee_accept_id}",value={'employee_id':employee_id,'account_id':account['id'],'shop_id':shop_id},expire=500)
         response_content=ResponseContentTypDict(
             status=201,
             msg="Employee created successfully, Waiting for confirmation",
@@ -93,6 +135,49 @@ class EmployeeCrud(BaseCrud):
         """this is just a wrapper for basecrud ABC"""
         ...
 
+    @catch_errors
+    @start_db_transaction
+    @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
+    async def update_accept(self,account_id:str,shop_id:str,employee_id:str,is_accepted:bool):
+        employee_toupdate=update(
+            Employees
+        ).where(
+            and_(
+                Employees.id==employee_id,
+                Employees.shop_id==shop_id,
+                Employees.account_id==account_id
+            )
+        ).values(
+            is_accepted=is_accepted
+        ).returning(Employees.id)
+
+        is_updated=(await self.session.execute(employee_toupdate)).scalar_one_or_none()
+
+        
+        
+        response_content={
+            "detail":ResponseContentTypDict(
+                status=200,
+                msg="Employee updated successfully",
+                succsess=True
+            )
+        }
+
+        if not is_updated:
+            response_content=ResponseContentTypDict(
+                status=404,
+                msg="Error : Updating employee accept",
+                succsess=False,
+                description="Employee id not found"
+            )
+
+            raise HTTPException(status_code=404,detail=response_content)
+        
+        return ORJSONResponse(
+            status_code=200,
+            content=response_content
+        )
+    
 
     @catch_errors
     @start_db_transaction
@@ -187,13 +272,13 @@ class EmployeeCrud(BaseCrud):
             await self.session.execute(
                 select(
                     Employees.id.label("employee_id"),
-                    Accounts.name.label('employee_name'),
+                    func.coalesce(Employees.employee_name,Accounts.name).label('employee_name'),
                     Accounts.email.label("employee_email"),
                     Employees.role.label("employee_role"),
                     Employees.account_id,
                     Employees.shop_id.label("employee_shop_id"),
                     Shops.name.label("employee_shop_name"),
-                    literal(True).label("is_accepted")
+                    Employees.is_accepted.label("employee_accepted")
                 )
                 .join(Accounts,Accounts.id==Employees.account_id,isouter=True)
                 .join(Shops,Shops.id==Employees.shop_id,isouter=True)
@@ -219,13 +304,13 @@ class EmployeeCrud(BaseCrud):
             await self.session.execute(
                 select(
                     Employees.id.label("employee_id"),
-                    Accounts.name.label('employee_name'),
+                    func.coalesce(Employees.employee_name,Accounts.name).label('employee_name'),
                     Accounts.email.label("employee_email"),
                     Employees.role.label("employee_role"),
                     Employees.account_id,
                     Employees.shop_id.label("employee_shop_id"),
                     Shops.name.label("employee_shop_name"),
-                    literal(True).label("is_accepted")
+                    Employees.is_accepted.label("employee_accepted")
     
                 )
                 .join(Accounts,Accounts.id==Employees.account_id,isouter=True)

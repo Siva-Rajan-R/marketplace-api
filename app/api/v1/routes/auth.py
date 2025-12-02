@@ -1,8 +1,9 @@
 from fastapi import APIRouter,Depends,Request,HTTPException
 from fastapi.responses import RedirectResponse
 from app.middlewares.token_verification import verify_token
-from app.database.configs.pg_config import get_pg_async_session
+from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from app.operations.crud.account_crud import AccountCrud
+from app.operations.crud.employee_crud import EmployeeCrud,RoleEnum
 from app.data_formats.typed_dicts.response_typdict import ResponseContentTypDict
 from app.operations.auth.deb_authentication import DeBAuthentication,JWT_ACCESS_TOKEN_SECRET,JWT_REFRESH_TOKEN_SECRET,JwtTokenGenerator,JWT_TOKEN_ALGORITHM
 import os
@@ -51,8 +52,21 @@ async def get_tokens(data:AuthGetTokens,request:Request,token_data:dict=Depends(
                 description="User not found or Authenticated"
             )
         )
+    
     account_info=await get_redis(f"AUTH-CRED-{token_data['id']}")
     await unlink_redis(key=[f"AUTH-CRED-{token_data['id']}"])
+
+    if not account_info:
+        raise HTTPException(
+            status_code=401,
+            detail=ResponseContentTypDict(
+                status=401,
+                msg="Error : Getting tokens",
+                description="Invalid token , Please sign in again"
+            )
+        )
+    
+    
     access_token=JwtTokenGenerator.create_token(
         jwt_alg=JWT_TOKEN_ALGORITHM,
         jwt_secret=JWT_ACCESS_TOKEN_SECRET,
@@ -85,3 +99,29 @@ async def get_new_token(token_data:dict=Depends(verify_token)):
     return {
         'access_token':access_token
     }
+
+
+
+@router.get('/auth/accept/employee/{accept_id}')
+async def accept_employee(accept_id:str,session:AsyncSession=Depends(get_pg_async_session)):
+    employee_info=await get_redis(f'EMPLOYEE-ACCEPT-ID-{accept_id}')
+    await unlink_redis(key=[f'EMPLOYEE-ACCEPT-ID-{accept_id}'])
+
+    if not employee_info:
+        raise HTTPException(
+            status_code=404,
+            detail=ResponseContentTypDict(
+                status=404,
+                msg="Error : Accepting employee",
+                description="Invalid employee accept id"
+            )
+        )
+    
+    await EmployeeCrud(session=session,current_user_role=RoleEnum.SUPER_ADMIN,current_user_id="").update_accept(
+        account_id=employee_info['account_id'],
+        employee_id=employee_info['employee_id'],
+        shop_id=employee_info['shop_id'],
+        is_accepted=True
+    )
+
+    return "Your are Successfully added as a employyee to that company"

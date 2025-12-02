@@ -19,7 +19,8 @@ class AccountCrud(BaseCrud):
             select(
                 Accounts.id,
                 Accounts.email,
-                Accounts.role
+                Accounts.role,
+                Accounts.name,
             ).where(
                 or_(
                     Accounts.id==account_id_email,
@@ -197,7 +198,8 @@ class AccountCrud(BaseCrud):
             .where(
                 and_(
                     Employees.account_id==account_id,
-                    Employees.shop_id==shop_id
+                    Employees.shop_id==shop_id,
+                    Employees.is_accepted==True
                 ) 
             )
         )).scalar_one_or_none()
