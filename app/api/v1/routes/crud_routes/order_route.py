@@ -1,18 +1,18 @@
 from fastapi import APIRouter,Depends,Query
 from app.operations.crud.order_crud import OrderCrud,RoleEnum
-from ..schemas.order_schema import AddOrderSchema,UpdateOrderSchema,UpdateOrderStatus
+from ...schemas.order_schema import AddOrderSchema,UpdateOrderSchema,UpdateOrderStatus
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from app.middlewares.token_verification import verify_token
 from typing import Optional,List
-from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
+from ..import AuthTokenInfoTypDict,AuthRedisValueTypDict
 
-router=APIRouter(
-    tags=["Orders CRUD"]
+v1_router=APIRouter(
+    tags=["V1 Orders CRUD"]
 )
 
 role=RoleEnum.ADMIN
 
-@router.post("/orders")
+@v1_router.post("/orders")
 async def add_order(data:AddOrderSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await OrderCrud(
         session=session,
@@ -30,7 +30,7 @@ async def add_order(data:AddOrderSchema,session:AsyncSession=Depends(get_pg_asyn
         customer_number=data.customer_number
     )
 
-@router.put("/orders/status")
+@v1_router.put("/orders/status")
 async def update_order_status(data:UpdateOrderStatus,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await OrderCrud(
         session=session,
@@ -45,7 +45,7 @@ async def update_order_status(data:UpdateOrderStatus,session:AsyncSession=Depend
         order_origin=data.order_origin
     )
 
-@router.delete("/orders/{order_id}")
+@v1_router.delete("/orders/{order_id}")
 async def delete_order(order_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await OrderCrud(
         session=session,
@@ -58,7 +58,7 @@ async def delete_order(order_id:str,session:AsyncSession=Depends(get_pg_async_se
         order_id=order_id
     )
 
-@router.get("/orders/shop")
+@v1_router.get("/orders/shop")
 async def get_orders(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await OrderCrud(
         session=session,
@@ -73,7 +73,7 @@ async def get_orders(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),lim
         limit=limit
     )
 
-@router.get("/orders/{order_id}")
+@v1_router.get("/orders/{order_id}")
 async def get_order_byid(order_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await OrderCrud(
         session=session,

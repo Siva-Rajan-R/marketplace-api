@@ -1,10 +1,16 @@
 from abc import ABC,abstractmethod
 from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.data_formats.enums.user_enum import RoleEnum
+from pydantic import EmailStr
 
 @dataclass(frozen=True)
 class BaseCrud(ABC):
-    session: AsyncSession
+    session:AsyncSession
+    current_user_role:RoleEnum
+    current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
     
     @abstractmethod
     async def add(self,*args,**kwargs):

@@ -5,22 +5,18 @@ from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
 from app.database.models.pg_models.employees_model import Employees
 from .account_crud import AccountCrud,Accounts
 from .shop_crud import ShopCrud
+from fastapi.requests import Request
 from app.database.models.pg_models.shops_model import Shops
 from app.utils.uuid_generator import generate_uuid
 from app.utils.email_senders import send_employee_aceept_req_email
 
 
 
-@dataclass(frozen=True)
 class EmployeeCrud(BaseCrud):
-    session:AsyncSession
-    current_user_role:RoleEnum
-    current_user_id:str
-    current_user_name:str
-    current_user_email:EmailStr
 
     @catch_errors
     async def verify_employee_exists(self,account_id:str,shop_id:str):
+        ic(account_id,shop_id)
         employee=(await self.session.execute(
             select(
                 Employees.id,
@@ -41,25 +37,27 @@ class EmployeeCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
-    async def add(self,shop_id:str,name:str,email:EmailStr,role:RoleEnum,bgt:BackgroundTasks):
-        # 1. need to check employee exists for the given shop
-        # 2. need to check is shop exists
-        # 3. then check is present on account table otherwise add it then create a employee table with is_accepted=False
+    async def add(self,shop_id:str,name:str,email:EmailStr,role:RoleEnum,bgt:BackgroundTasks,request:Request):
+        # 1. need to check shop id, account id and check if the employe exists for the given shop.
+        # - if the account is not present add this employee info to the account table
+        # 2. add this to employess table
         # 4. finally send an email for accepting
+
         tabeles_toadd=[]
         account_id=None
-        temp_name=name
+        temp_name=name #for sending the name to email
         
+
+        # checking shop exists
         shop=(
             await ShopCrud(
             session=self.session,
-            current_user_id="",
+            current_user_id=self.current_user_id,
             current_user_role=RoleEnum.SUPER_ADMIN,
-            current_user_name="",
-            current_user_email=""
+            current_user_name=self.current_user_name,
+            current_user_email=self.current_user_email
             ).verify_isexists(shop_id=shop_id)
         )
-
         if not shop:
             raise HTTPException(
                 status_code=404,
@@ -70,15 +68,15 @@ class EmployeeCrud(BaseCrud):
                 )
             )
         
+        # checking account exists, not means setting name=None and creating into a account table
         account=(await AccountCrud(
                 session=self.session,
-                current_user_id="",
+                current_user_id=self.current_user_id,
                 current_user_role=RoleEnum.SUPER_ADMIN,
-                current_user_name="",
-                current_user_email=""
+                current_user_name=self.current_user_name,
+                current_user_email=self.current_user_email
             ).verify_account_exists(account_id_email=email)
         )
-        ic(account)
         if not account:
             account_id=generate_uuid()
             account_toadd=Accounts(
@@ -91,7 +89,6 @@ class EmployeeCrud(BaseCrud):
             tabeles_toadd.append(account_toadd)
         else:
             account_id=account['id']
-
             if await self.verify_employee_exists(account_id=account_id,shop_id=shop_id):
                 raise HTTPException(
                     status_code=409,
@@ -101,10 +98,12 @@ class EmployeeCrud(BaseCrud):
                         description="Employee already exists"
                     )
                 )
+            # checking the account table name & given name is matching or not, exists means set none otherwise set the given name
             
             if account['name'].lower()==name.lower():
                 name=None
 
+        # adding employee
         employee_id:str=generate_uuid()
         employee_toadd=Employees(
             id=employee_id,
@@ -115,8 +114,6 @@ class EmployeeCrud(BaseCrud):
             employee_name=name,
             is_accepted=False
         )
-
-
         tabeles_toadd.append(employee_toadd)
         self.session.add_all(tabeles_toadd)
         
@@ -129,15 +126,16 @@ class EmployeeCrud(BaseCrud):
             shop_id=shop_id,
             account_id=account_id,
             employee_id=employee_id,
-            employee_name=temp_name
+            employee_name=temp_name,
+            request=request
         )
         
+        # for sending response to requester
         response_content=ResponseContentTypDict(
             status=201,
             msg="Employee created successfully, Waiting for confirmation",
             succsess=True
         )
-
         return ORJSONResponse(
             status_code=201,
             content={"detail":response_content}
@@ -145,13 +143,14 @@ class EmployeeCrud(BaseCrud):
 
 
     async def update(self):
-        """this is just a wrapper for basecrud ABC"""
+        """this is just a wrapper for Basecrud ABC"""
         ...
 
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
     async def update_accept(self,account_id:str,shop_id:str,employee_id:str,is_accepted:bool):
+        """This method is for updating the employee acceptance of their account for that shop is_accepted=True|False"""
         employee_toupdate=update(
             Employees
         ).where(
@@ -177,6 +176,7 @@ class EmployeeCrud(BaseCrud):
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
     async def update_role(self,account_id:str,shop_id:str,employee_id:str,role:RoleEnum):
+        """This method for updating the role of the employee by the employer"""
         employee_toupdate=update(
             Employees
         ).where(

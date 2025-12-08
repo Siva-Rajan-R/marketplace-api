@@ -6,6 +6,7 @@ from ..templates.emails_template.registeration_template import (
     get_registration_received_email_content,
     get_user_registration_accept_email_content
 )
+from fastapi.requests import Request
 from ..templates.emails_template.employee_template import get_employee_accept_req_email_content,get_employee_accepted_email_content
 from app.security.url_secret_generator import UrlSecretGenerator
 from ..database.configs.redis_config import get_redis,set_redis,unlink_redis
@@ -22,23 +23,30 @@ BACKEND_URL=os.getenv("BACKEND_URL")
 ORGANAIZATION_NAME="Marketplace"
 ORGANAIZATION_YEAR=2025
 
-async def send_registeration_accept_req_email(email:EmailStr,name:str,description,shop_type:ShopTypeEnum,mobile_no:str):
+
+# For registeration realted email senders
+async def send_registeration_accept_req_email(email:EmailStr,shop_name:str,name:str,description,shop_type:ShopTypeEnum,mobile_no:str,request:Request):
     token=UrlSecretGenerator.generate(
         data={
             'email':email,
-            'name':name
+            'name':name,
+            'shop_name':shop_name
         }
     )
     ic(token)
+    base_url=f"{BACKEND_URL}{request.app.url_path_for("accept_register",register_secret=token)}"
     admin_email_content=get_user_registration_accept_email_content(
         email=email,
         name=name,
+        shop_name=shop_name,
         description=description,
         shop_type=shop_type.value or shop_type,
         mobile_number=mobile_no,
-        accept_url=f"{BACKEND_URL}/auth/accept/register/{token}?method=accept",
-        delete_url=f"{BACKEND_URL}/auth/accept/register/{token}?method=delete"
+        accept_url=f"{base_url}?method=accept",
+        delete_url=f"{base_url}?method=delete"
     )
+
+    
 
     organization_emails:List[EmailStr]=orjson.loads(os.getenv("ORGANIZATION_EMAILS"))
 
@@ -52,6 +60,7 @@ async def send_registeration_accept_req_email(email:EmailStr,name:str,descriptio
     if is_sended:
         greet_email_content=get_registration_received_email_content(
             name=name.title(),
+            shop_name=shop_name,
             shop_type=shop_type.value,
             mobile_number=mobile_no,
             description=description,
@@ -116,8 +125,8 @@ async def send_registeration_accepted_email(method:Literal['accept','delete'],na
             is_html=True
         )
 
-
-async def send_employee_aceept_req_email(shop_name:str,email:EmailStr,employee_role:str,employee_name:str,employee_id:str,account_id:str,shop_id:str):
+# For employee related email senders
+async def send_employee_aceept_req_email(shop_name:str,email:EmailStr,employee_role:str,employee_name:str,employee_id:str,account_id:str,shop_id:str,request:Request):
     data={
         'employee_id':employee_id,
         'account_id':account_id,
@@ -128,11 +137,12 @@ async def send_employee_aceept_req_email(shop_name:str,email:EmailStr,employee_r
         'employee_role':employee_role
     }
     employee_accept_token=UrlSecretGenerator.generate(data=data)
+    accept_url=f"{BACKEND_URL}{request.app.url_path_for("accept_employee",accept_token=employee_accept_token)}"
     email_content=get_employee_accept_req_email_content(
         shop_name=shop_name,
         role=employee_role,
         employee_name=employee_name,
-        accept_url=f"{BACKEND_URL}/auth/accept/employee/{employee_accept_token}",
+        accept_url=accept_url,
     )
     await DebEmailService.send(
         recivers_email=[email],

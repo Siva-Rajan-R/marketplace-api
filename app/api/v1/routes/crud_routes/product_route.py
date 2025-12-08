@@ -1,18 +1,18 @@
 from fastapi import APIRouter,Depends,Query
 from app.operations.crud.product_crud import ProductCrud,RoleEnum
-from ..schemas.product_schema import AddProductSchema,UpdateProductSchema
+from ...schemas.product_schema import AddProductSchema,UpdateProductSchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from typing import Optional,List
 from app.middlewares.token_verification import verify_token
-from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
+from ..import AuthTokenInfoTypDict,AuthRedisValueTypDict
 
-router=APIRouter(
-    tags=["Products CRUD"]
+v1_router=APIRouter(
+    tags=["V1 Products CRUD"]
 )
 
 role=RoleEnum.ADMIN
 
-@router.post("/products")
+@v1_router.post("/products")
 async def add_product(data:AddProductSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ProductCrud(
         session=session,
@@ -27,7 +27,7 @@ async def add_product(data:AddProductSchema,session:AsyncSession=Depends(get_pg_
         category=data.category,
     )
 
-@router.put("/products")
+@v1_router.put("/products")
 async def update_product(data:UpdateProductSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ProductCrud(
         session=session,
@@ -43,7 +43,7 @@ async def update_product(data:UpdateProductSchema,session:AsyncSession=Depends(g
         barcode=data.barcode
     )
 
-@router.delete("/products/{product_id}/{barcode}")
+@v1_router.delete("/products/{product_id}/{barcode}")
 async def delete_product(product_id:str,barcode:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ProductCrud(
         session=session,
@@ -57,7 +57,7 @@ async def delete_product(product_id:str,barcode:str,session:AsyncSession=Depends
     )
 
 
-@router.get("/products")
+@v1_router.get("/products")
 async def get_product(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ProductCrud(
         session=session,
@@ -71,7 +71,7 @@ async def get_product(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),li
         limit=limit
     )
 
-@router.get("/product/{product_id}")
+@v1_router.get("/product/{product_id}")
 async def get_product_byid(product_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ProductCrud(
         session=session,

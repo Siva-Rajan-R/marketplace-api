@@ -21,4 +21,4 @@ class AuthRedisModels:
     @staticmethod
     async def unlink_login_info(user_id:str):
         key=AuthRedisModels.__login_info_key_builder(user_id)
-        await unlink_redis(key=[user_id])
+        await unlink_redis(key=[key])

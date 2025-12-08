@@ -1,19 +1,18 @@
 from fastapi import APIRouter,Depends,Query,Request
 from app.operations.crud.account_crud import AccountCrud,RoleEnum
-from ..schemas.account_schema import AddAccountSchema,UpdateAccountSchema
+from ...schemas.account_schema import AddAccountSchema,UpdateAccountSchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from app.middlewares.token_verification import verify_token
 from typing import Optional,List
 from app.database.configs.redis_config import unlink_redis
-from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
 
-router=APIRouter(
-    tags=["Accounts CRUD"]
+v1_router=APIRouter(
+    tags=["V1 Accounts CRUD"]
 )
 
 role=RoleEnum.SUPER_ADMIN
 
-@router.post("/accounts")
+@v1_router.post("/accounts")
 async def add_Account(data:AddAccountSchema,session:AsyncSession=Depends(get_pg_async_session)):
     """This route only for the marketplace organization"""
     return await AccountCrud(
@@ -28,7 +27,7 @@ async def add_Account(data:AddAccountSchema,session:AsyncSession=Depends(get_pg_
         role=RoleEnum.USER
     )
 
-@router.put("/accounts")
+@v1_router.put("/accounts")
 async def update_Account(data:UpdateAccountSchema,session:AsyncSession=Depends(get_pg_async_session)):
     """This route only for the marketplace organization"""
     await unlink_redis(key=[f"AUTH-{""}"])
@@ -45,7 +44,7 @@ async def update_Account(data:UpdateAccountSchema,session:AsyncSession=Depends(g
         role=RoleEnum.USER
     )
 
-@router.delete("/accounts")
+@v1_router.delete("/accounts")
 async def delete_account(session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
     await unlink_redis(key=[f"AUTH-{token_data['id']}"])
     return await AccountCrud(
@@ -58,7 +57,7 @@ async def delete_account(session:AsyncSession=Depends(get_pg_async_session),toke
         account_id=token_data['id']
     )
 
-@router.get("/accounts")
+@v1_router.get("/accounts")
 async def get_account(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session)):
     """This route only for the marketplace organization"""
     return await AccountCrud(
@@ -73,7 +72,7 @@ async def get_account(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),li
         limit=limit
     )
 
-@router.get("/accounts/{account_id}")
+@v1_router.get("/accounts/{account_id}")
 async def get_Account_byid(account_id:str,session:AsyncSession=Depends(get_pg_async_session)):
     """This route only for the marketplace organization"""
     return await AccountCrud(

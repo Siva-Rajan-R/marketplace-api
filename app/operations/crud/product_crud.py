@@ -7,21 +7,15 @@ from app.database.models.pg_models.products_model import Products
 from app.utils.uuid_generator import generate_uuid
 
 
-@dataclass(frozen=True)
+
 class ProductCrud(BaseCrud):
-    session:AsyncSession
-    current_user_role:RoleEnum
-    current_user_id:str
-    current_user_name:str
-    current_user_email:EmailStr
-
-
+    # This whole class is only for internal use only
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value,RoleEnum.ADMIN.value])
     async def add(self,name:str,description:str,category:ProductCategoryEnum,barcode:str,product_id:Optional[str]=None):
+        # Which is an global product data storing, currently no need for checking anything internal use only
         product_id:str=generate_uuid() if not product_id else product_id
-
         product_toadd=Products(
             id=product_id,
             name=name,

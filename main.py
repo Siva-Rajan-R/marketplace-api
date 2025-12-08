@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from app.api.v1.routes import auth,account_route,inventory_route,product_route,order_route,shop_route,employee_route
+from app.api.v1.routes.crud_routes import inventory_route,product_route,order_route,shop_route,employee_route,account_route
 from starlette.middleware.cors import CORSMiddleware
+from app.api.v1.routes.auth_routes import reg_log_route,accept_route
 from app.database.configs.pg_config import init_pg_db
 from contextlib import asynccontextmanager
 from icecream import ic
@@ -56,13 +57,14 @@ def home_root():
         'msg':'hi this is from marketplace api, if you are an user please go back to our site https://marketplace.com/'
     }
 
-app.include_router(auth.router)
-app.include_router(account_route.router)
-app.include_router(shop_route.router)
-app.include_router(employee_route.router)
-app.include_router(product_route.router)
-app.include_router(inventory_route.router)
-app.include_router(order_route.router)
+app.include_router(reg_log_route.v1_router,prefix='/api/v1')
+app.include_router(accept_route.v1_router,prefix='/api/v1')
+app.include_router(account_route.v1_router,prefix='/api/v1')
+app.include_router(shop_route.v1_router,prefix='/api/v1')
+app.include_router(employee_route.v1_router,prefix='/api/v1')
+app.include_router(product_route.v1_router,prefix='/api/v1')
+app.include_router(inventory_route.v1_router,prefix='/api/v1')
+app.include_router(order_route.v1_router,prefix='/api/v1')
 
 
 

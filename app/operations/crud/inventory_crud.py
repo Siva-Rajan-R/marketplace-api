@@ -10,17 +10,14 @@ from app.utils.uuid_generator import generate_uuid
 from .product_crud import ProductCrud
 
 
-@dataclass(frozen=True)
 class InventoryCrud(BaseCrud):
-    session:AsyncSession
-    current_user_role:RoleEnum
-    current_user_id:str
-    current_user_name:str
-    current_user_email:EmailStr
 
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.ADMIN.value,RoleEnum.SUPER_ADMIN.value])
+    # need to check shop id, given barcode is exists
+    # check the product exisistence, if not adding it to an product table
+    # finally adding to the inventory table for the given shop
     async def add(
         self,
         stocks:int,
@@ -35,8 +32,16 @@ class InventoryCrud(BaseCrud):
         image_urls:Optional[List[str]]
         
     ):
-        product_category=product_category.value
-        is_shop_exists=await ShopCrud(session=self.session,current_user_role='',current_user_id='',current_user_name='',current_user_email='').verify_isexists(shop_id=shop_id)
+        product_category=product_category.value #for validation
+
+        is_shop_exists=await ShopCrud(
+            session=self.session,
+            current_user_role=RoleEnum.SUPER_ADMIN,
+            current_user_id=self.current_user_id,
+            current_user_name=self.current_user_name,
+            current_user_email=self.current_user_email
+            ).verify_isexists(shop_id=shop_id)
+        
         if not is_shop_exists:
             raise HTTPException(
                 status_code=404,
@@ -67,8 +72,21 @@ class InventoryCrud(BaseCrud):
                 )
             )
         
+        # checking the barcode has in crt format
+        if not barcode or barcode.strip()=="":
+            raise HTTPException(
+                status_code=422,
+                detail=ResponseContentTypDict(
+                    status=422,
+                    msg="Error : Adding to inventory",
+                    succsess=False,
+                    description="Invalid barcode format"
+                )
+            )
+        
+        # checking the product is exists or not if it hasn't means adding it to an a product table
         product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role,current_user_email=self.current_user_email,current_user_id=self.current_user_id,current_user_name=self.current_user_name)
-        product_info:dict=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
+        product_info:dict=(await product_obj.get_byid(product_barcode_id=barcode))['product']
 
         if product_info:
             product_id=product_info['product_id']
@@ -132,15 +150,30 @@ class InventoryCrud(BaseCrud):
         product_category:ProductCategoryEnum,
         image_urls:Optional[List[str]],
     ):
-        product_category=product_category.value
+        product_category=product_category.value #for validation
+
+        # checking barcode format is valid
+        if not barcode or barcode.strip()=="":
+            raise HTTPException(
+                status_code=422,
+                detail=ResponseContentTypDict(
+                    status=422,
+                    msg="Error : Adding to inventory",
+                    succsess=False,
+                    description="Invalid barcode format"
+                )
+            )
+        
+        # checking the given product is exists on if it means and all the datas should be matched means directly return,
+        #  otherwise update that data on the inventory
         product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role,current_user_email=self.current_user_email,current_user_id=self.current_user_id,current_user_name=self.current_user_name)
-        product_info=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
+        product_info=(await product_obj.get_byid(product_barcode_id=barcode))['product']
 
         if product_info:
             if (
                 product_info['product_name'].lower()==product_name.lower() and 
                 product_info['product_description'].lower()==product_description.lower() and 
-                product_info['product_category'].lower()==product_category.value.lower()
+                product_info['product_category'].lower()==product_category.lower()
             ):
 
                 return ORJSONResponse(

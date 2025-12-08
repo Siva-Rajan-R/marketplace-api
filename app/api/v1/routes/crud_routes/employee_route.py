@@ -1,20 +1,20 @@
 from fastapi import APIRouter,Depends,Query,Request,BackgroundTasks
 from app.operations.crud.employee_crud import EmployeeCrud,RoleEnum
-from ..schemas.employee_schema import AddEmployeeSchema,UpdateEmployeeSchema
+from ...schemas.employee_schema import AddEmployeeSchema,UpdateEmployeeSchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from typing import Optional,List
 from app.database.configs.redis_config import unlink_redis
 from app.middlewares.token_verification import verify_token
-from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
+from ..import AuthTokenInfoTypDict,AuthRedisValueTypDict
 from app.database.models.redis_models.auth_model import AuthRedisModels
 
-router=APIRouter(
-    tags=["Employees CRUD"]
+v1_router=APIRouter(
+    tags=["V1 Employees CRUD"]
 )
 
 role=RoleEnum.SUPER_ADMIN
 
-@router.post("/employees")
+@v1_router.post("/employees")
 async def add_employee(data:AddEmployeeSchema,request:Request,bgt:BackgroundTasks,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await EmployeeCrud(
         session=session,
@@ -27,12 +27,13 @@ async def add_employee(data:AddEmployeeSchema,request:Request,bgt:BackgroundTask
         email=data.email,
         name=data.name,
         role=data.role,
-        bgt=bgt
+        bgt=bgt,
+        request=request
     )
 
 
 
-@router.put("/employees/role")
+@v1_router.put("/employees/role")
 async def update_employee_role(data:UpdateEmployeeSchema,request:Request,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     res=await EmployeeCrud(
         session=session,
@@ -51,7 +52,7 @@ async def update_employee_role(data:UpdateEmployeeSchema,request:Request,session
 
     return res
 
-@router.delete("/employees/{account_id}/{employee_id}")
+@v1_router.delete("/employees/{account_id}/{employee_id}")
 async def delete_employee(account_id:str,employee_id:str,request:Request,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     res=await EmployeeCrud(
         session=session,
@@ -69,7 +70,7 @@ async def delete_employee(account_id:str,employee_id:str,request:Request,session
 
     return res
 
-@router.get("/employees")
+@v1_router.get("/employees")
 async def get_employee(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await EmployeeCrud(
         session=session,
@@ -84,7 +85,7 @@ async def get_employee(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),l
         limit=limit
     )
 
-@router.get("/employees/{account_id}/{employee_id}")
+@v1_router.get("/employees/{account_id}/{employee_id}")
 async def get_employee_byid(account_id:str,employee_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await EmployeeCrud(
         session=session,

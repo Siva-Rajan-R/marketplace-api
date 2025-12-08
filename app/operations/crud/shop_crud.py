@@ -8,17 +8,10 @@ from app.data_formats.typed_dicts.shop_typdict import ShopAddressTypDict
 from app.database.models.pg_models.employees_model import Employees
 from app.database.models.pg_models.accounts_model import Accounts
 from app.utils.uuid_generator import generate_uuid
+import asyncio
 
-
-@dataclass(frozen=True)
 class ShopCrud(BaseCrud):
-    session:AsyncSession
-    current_user_role:RoleEnum
-    current_user_id:str
-    current_user_name:str
-    current_user_email:EmailStr
     
-
     @catch_errors
     async def verify_isexists(self,shop_id:str):
         shop=(await self.session.execute(
@@ -34,6 +27,7 @@ class ShopCrud(BaseCrud):
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
     async def add(self,name:str,description:str,address:ShopAddressTypDict,mobile_number:str,shop_type:ShopTypeEnum,gst_no:Optional[str]=None):
+        # Nothing need to check , bcoz the account id is already verified on the middleware
         shop_id:str=generate_uuid()
         shop_toadd=Shops(
             id=shop_id,
@@ -200,6 +194,7 @@ class ShopCrud(BaseCrud):
     
     @catch_errors
     async def get_by_account(self,account_id:str):
+        # This will check the both 
         owned_q = (
             select(
                 Shops.id.label("shop_id"),
@@ -215,7 +210,6 @@ class ShopCrud(BaseCrud):
             .where(Shops.account_id == account_id)
         )
 
-    # Shops where account is an employee
         employee_q = (
             select(
                 Shops.id.label("shop_id"),

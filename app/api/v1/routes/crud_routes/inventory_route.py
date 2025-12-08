@@ -1,18 +1,18 @@
 from fastapi import APIRouter,Depends,Query
 from app.operations.crud.inventory_crud import InventoryCrud,RoleEnum
-from ..schemas.inventory_schema import AddInventorySchema,UpdateInventorySchema
+from ...schemas.inventory_schema import AddInventorySchema,UpdateInventorySchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from app.middlewares.token_verification import verify_token
 from typing import Optional,List
-from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
+from ..import AuthTokenInfoTypDict,AuthRedisValueTypDict
 
-router=APIRouter(
-    tags=["Inventory CRUD"]
+v1_router=APIRouter(
+    tags=["V1 Inventory CRUD"]
 )
 
 role=RoleEnum.ADMIN
 
-@router.post("/inventories")
+@v1_router.post("/inventories")
 async def add_inventory(data:AddInventorySchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
@@ -33,7 +33,7 @@ async def add_inventory(data:AddInventorySchema,session:AsyncSession=Depends(get
         image_urls=data.image_urls
     )
 
-@router.put("/inventories")
+@v1_router.put("/inventories")
 async def update_inventory(data:UpdateInventorySchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
@@ -54,7 +54,7 @@ async def update_inventory(data:UpdateInventorySchema,session:AsyncSession=Depen
         image_urls=data.image_urls
     )
 
-@router.delete("/inventories/{inventory_id}")
+@v1_router.delete("/inventories/{inventory_id}")
 async def delete_inventory(inventory_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
@@ -67,7 +67,7 @@ async def delete_inventory(inventory_id:str,session:AsyncSession=Depends(get_pg_
         inventory_id=inventory_id
     )
 
-@router.get("/inventories/shop")
+@v1_router.get("/inventories/shop")
 async def get_inventories(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
@@ -82,7 +82,7 @@ async def get_inventories(q:Optional[str]=Query(""),offset:Optional[int]=Query(0
         limit=limit
     )
 
-@router.get("/inventories/{inventory_id}")
+@v1_router.get("/inventories/{inventory_id}")
 async def get_inventory_byid(inventory_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,

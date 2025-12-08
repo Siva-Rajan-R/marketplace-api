@@ -1,7 +1,7 @@
 from ..import ORGANAIZATION_YEAR,ORGANAIZATION_NAME,Optional,List,EmailStr
 
 def get_user_registration_accept_email_content(
-    name:str, email:EmailStr, description:str, shop_type:str, mobile_number:str,accept_url:str, delete_url:str,
+    name:str, email:EmailStr, description:str,shop_name:str, shop_type:str, mobile_number:str,accept_url:str, delete_url:str,
     year:Optional[int]=ORGANAIZATION_YEAR, org_name:Optional[str]=ORGANAIZATION_NAME
 ):
     return f"""
@@ -66,6 +66,7 @@ def get_user_registration_accept_email_content(
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Name:</strong> {name}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Email:</strong> {email}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Description:</strong> {description}</p>
+                <p style="margin:6px 0;"><strong style="color:#1e293b;">Shop Name:</strong> {shop_name}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Shop Type:</strong> {shop_type}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Mobile Number:</strong> {mobile_number}</p>
               </div>
@@ -144,7 +145,7 @@ def get_user_registration_accept_email_content(
 """
 
 
-def get_registration_received_email_content(name:str, email:EmailStr, description:str, shop_type:str, mobile_number:str, year:Optional[int]=ORGANAIZATION_YEAR, org_name:Optional[str]=ORGANAIZATION_NAME):
+def get_registration_received_email_content(name:str, email:EmailStr, description:str, shop_name:str, shop_type:str, mobile_number:str, year:Optional[int]=ORGANAIZATION_YEAR, org_name:Optional[str]=ORGANAIZATION_NAME):
    return f"""
 <!doctype html>
 <html>
@@ -207,6 +208,7 @@ def get_registration_received_email_content(name:str, email:EmailStr, descriptio
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Name:</strong> {name}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Email:</strong> {email}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Description:</strong> {description}</p>
+                <p style="margin:6px 0;"><strong style="color:#1e293b;">Shop Name:</strong> {shop_name}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Shop Type:</strong> {shop_type}</p>
                 <p style="margin:6px 0;"><strong style="color:#1e293b;">Mobile Number:</strong> {mobile_number}</p>
               </div>

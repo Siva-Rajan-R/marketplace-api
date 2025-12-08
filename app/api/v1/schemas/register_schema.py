@@ -4,6 +4,7 @@ from app.data_formats.enums.shop_enum import ShopTypeEnum
 
 class RegisterationAddSchema(BaseModel):
     name:str
+    shop_name:str
     email:EmailStr
     mobile_number:str
     description:str

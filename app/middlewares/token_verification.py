@@ -16,13 +16,28 @@ bearer=HTTPBearer()
 
 @catch_errors
 async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=Depends(bearer),session:AsyncSession=Depends(get_pg_async_session)) -> AuthTokenInfoTypDict | HTTPException:
-    async def __token_selection_handler():
+    async def __token_verification_handler(token:str):
+        if not token:
+            
+            raise HTTPException(
+                status_code=401,
+                detail=ResponseContentTypDict(
+                    status=401,
+                    msg="Error : Unauthorized",
+                    description="Unauthorized: No token provided",
+                    succsess=False
+                )
+            )
+        
         try:
+            ic("Ott verification")
             token_data:AuthTokenInfoTypDict=await verify_ott(token=token,request=request,session=session)
             return {'token_data':token_data,'is_ott':True}
-        except:
+        except Exception as e:
+            ic("Error : => ",e)
             ...
         try:
+            ic("Jwt verification")
             secret=JWT_ACCESS_TOKEN_SECRET
             if request.url.path=="/auth/token/new":
                 secret=JWT_REFRESH_TOKEN_SECRET
@@ -34,7 +49,8 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
             ).get('data',{})
 
             return {'token_data':token_data,'is_ott':False}
-        except:
+        except Exception as e:
+            ic("Error : => ",e)
             ...
         
         raise HTTPException(
@@ -46,41 +62,35 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
                 succsess=False
             )
         )
-
-    ic(request.url.path in ["/auth/tokens","/shops/account"] or (request.url.path=='/shops' and request.method.lower()=="post"))
-    token=credentials.credentials
-    if not token:
-        raise HTTPException(
-            status_code=401,
-            detail=ResponseContentTypDict(
-                status=401,
-                msg="Error : Unauthorized",
-                description="Unauthorized: No token provided",
-                succsess=False
-            )
-        )
     
+    # getting token from header {Authorization : Bearer }
+    token:str=credentials.credentials 
+
     # finding the correct secret for token decode
-    selected_token=await __token_selection_handler()
-    token_data:dict | AuthTokenInfoTypDict=selected_token['token_data']
-    is_ott:bool=selected_token['is_ott']
+    verified_token_info=await __token_verification_handler(token=token)
+    token_data:dict | AuthTokenInfoTypDict=verified_token_info['token_data']
+    is_ott:bool=verified_token_info['is_ott']
     ic(token_data,is_ott)
     
-    # verifying user only if it was not temp token and not present in redis
+    # verifying user only if it was not ott token
     extracted_acc_info=None
     if not is_ott:
-        is_exists_redis:AuthRedisValueTypDict=await AuthRedisModels.get_login_info(user_id=token_data['id']) #it returns the ip and also the account info 
+        # checking the incoming account is in redis or not
+        is_exists_redis:AuthRedisValueTypDict=await AuthRedisModels.get_login_info(user_id=token_data['id'])
         ic(is_exists_redis)
         if is_exists_redis and (is_exists_redis['ip']!=request.client.host.__str__()):
             is_exists_redis=None
         
+        # if not in redis means we are going to check it from db and storing it to redis
         if not is_exists_redis:
             account_info=await AccountCrud(
-                session=session,current_user_role=RoleEnum.SUPER_ADMIN,
-                current_user_email="internal@api.com",current_user_id="",current_user_name=""
+                session=session,
+                current_user_role=RoleEnum.SUPER_ADMIN,
+                current_user_email="internal@api.com",current_user_id="internal userid",current_user_name="Internal user name"
             ).verify_account_exists(account_id_email=token_data['id'])
 
             ic(account_info,token_data['role'])
+            # if the account not exists or mismatched role it will rais an error
             if not account_info or account_info['role']!=token_data['role']:
                 raise HTTPException(
                     status_code=401,
@@ -120,7 +130,7 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
             )
 
     else:
-        ic("which is temporary token")
+        ic("which is ott token")
         extracted_acc_info=token_data
 
     await session.close()

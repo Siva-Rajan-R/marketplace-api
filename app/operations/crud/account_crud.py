@@ -8,13 +8,7 @@ from app.database.models.pg_models.shops_model import Shops
 from app.utils.uuid_generator import generate_uuid
 
 
-@dataclass(frozen=True)
 class AccountCrud(BaseCrud):
-    session:AsyncSession
-    current_user_role:RoleEnum
-    current_user_id:str
-    current_user_name:str
-    current_user_email:EmailStr
 
     @catch_errors
     async def verify_account_exists(
@@ -34,8 +28,9 @@ class AccountCrud(BaseCrud):
                 Accounts.email == account_id_email
             )
         ))).mappings().one_or_none()
+
         account=dict(account) if account else account
-        ic(account,type(account))
+        
         if not account:
             return account
         
@@ -46,6 +41,10 @@ class AccountCrud(BaseCrud):
                 if not role:
                     return None
                 account['role']=role
+            else:
+                is_shop=(await self.session.execute(select(Shops.id).where(Shops.id==shop_id))).scalar_one_or_none()
+                if not is_shop:
+                    return False
         ic(account)
         return account
 

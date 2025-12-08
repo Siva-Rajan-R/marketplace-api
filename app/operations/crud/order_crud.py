@@ -9,14 +9,7 @@ from app.operations.crud.shop_crud import ShopCrud
 from app.utils.uuid_generator import generate_uuid
 
 
-@dataclass(frozen=True)
 class OrderCrud(BaseCrud):
-    session:AsyncSession
-    current_user_role:RoleEnum
-    current_user_id:str
-    current_user_name:str
-    current_user_email:EmailStr
-
 
     @catch_errors
     @start_db_transaction
@@ -31,7 +24,17 @@ class OrderCrud(BaseCrud):
         customer_number:Optional[str],
         cur_user_id:str
     ):
-        is_shop_exists=await ShopCrud(session=self.session,current_user_role='',current_user_id='',current_user_name='',current_user_email='').verify_isexists(shop_id=shop_id)
+        # important* Need to implement the inventory related stuffs
+        # nedd to check shop id,
+        # Then finally add it to orders table
+        is_shop_exists=await ShopCrud(
+            session=self.session,
+            current_user_role=self.current_user_role,
+            current_user_id=self.current_user_id,
+            current_user_name=self.current_user_name,
+            current_user_email=self.current_user_email
+        ).verify_isexists(shop_id=shop_id)
+
         if not is_shop_exists:
             raise HTTPException(
                 status_code=404,
@@ -81,6 +84,7 @@ class OrderCrud(BaseCrud):
         order_status:OrderStatusEnum,
         order_origin:OrderOriginEnum,
     ):
+        """This method for updating the Order statuses status=>comp,pend,canc, origin=>offline,online"""
         
         ic(order_origin,order_status)
         order_sts_toupdate=update(

@@ -23,16 +23,20 @@ class RegisterCrud(BaseCrud):
     session:AsyncSession
 
     @catch_errors
-    async def verify_email_exists(self,email:EmailStr)->Register:
-        register=(await self.session.execute(
+    async def verify_email_exists(self,email:EmailStr)->dict:
+        register:dict=(await self.session.execute(
             select(
-                Register
+                Register.email,
+                Register.name,
+                Register.mobile_number,
+                Register.description,
+                Register.shop_type
             ).where(
                 and_(
                     Register.email==email
                 )
             )
-        )).scalar_one_or_none()
+        )).mappings().one_or_none()
 
         ic(register)
         return register
@@ -40,7 +44,7 @@ class RegisterCrud(BaseCrud):
 
     @catch_errors
     @start_db_transaction
-    async def add(self,name:str,email:EmailStr,mobile_number:str,description:str,shop_type:ShopTypeEnum,bgt:BackgroundTasks):
+    async def add(self,name:str,shop_name:str,email:EmailStr,mobile_number:str,description:str,shop_type:ShopTypeEnum,bgt:BackgroundTasks,request:Request):
         ic(email,name,mobile_number,description,shop_type)
         is_exists=await self.verify_email_exists(email=email)
         if is_exists:
@@ -49,8 +53,8 @@ class RegisterCrud(BaseCrud):
                 detail=ResponseContentTypDict(
                     status=409,
                     succsess=False,
-                    msg="Error : Registeration adding",
-                    description="User request already in queued..."
+                    msg="Error : Registeration of user",
+                    description="User regestration already in queued..."
                 )
             )
         ic(is_exists)
@@ -80,7 +84,8 @@ class RegisterCrud(BaseCrud):
             name=name,
             description=description,
             shop_type=shop_type,
-            mobile_number=mobile_number
+            mobile_number=mobile_number,
+            shop_name=shop_name
         )
 
         self.session.add(registeration_toadd)
@@ -92,7 +97,9 @@ class RegisterCrud(BaseCrud):
             name=name.title(),
             description=description,
             shop_type=shop_type,
-            mobile_no=mobile_number    
+            mobile_no=mobile_number,
+            shop_name=shop_name,
+            request=request  
         )
 
 
@@ -112,9 +119,9 @@ class RegisterCrud(BaseCrud):
 
     @catch_errors
     @start_db_transaction
-    async def transfer(self,email:str)->Register:
-        """THis method is used to transfer the data of registerd table data  to accounts table"""
-        registered_user=await self.verify_email_exists(email=email)
+    async def transfer(self,email:str)->dict:
+        """This method is used to transfer the data of registerd table data  to accounts table"""
+        registered_user:dict=await self.verify_email_exists(email=email)
         if not registered_user:
             return False
         
@@ -129,10 +136,10 @@ class RegisterCrud(BaseCrud):
                 current_user_id="",
                 current_user_name=""
             ).add(
-                name=registered_user.name,
-                email=registered_user.email,
+                name=registered_user['name'],
+                email=registered_user['email'],
                 role=RoleEnum.SUPER_ADMIN,
-                mobile_number=registered_user.mobile_number
+                mobile_number=registered_user['mobile_number']
         )
 
         return registered_user
@@ -142,13 +149,7 @@ class RegisterCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     async def delete(self,email:str)->dict:
-        is_deleted=(await self.session.execute(delete(Register).where(Register.email==email).returning(Register.email,Register.name,Register.mobile_number,Register.description,Register.shop_type))).mappings().one_or_none()
-
-        response_content=ResponseContentTypDict(
-            status=200,
-            succsess=True,
-            msg="Registeration deleted successfully"
-        )
+        is_deleted:dict=(await self.session.execute(delete(Register).where(Register.email==email).returning(Register.email,Register.name,Register.mobile_number,Register.description,Register.shop_type))).mappings().one_or_none()
 
         if not is_deleted:
             return False
