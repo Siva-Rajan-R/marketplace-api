@@ -11,6 +11,7 @@ class Employees(BASE):
     role=Column(String,nullable=False)
     # Optional field for overwriiten
     employee_name=Column(String,nullable=True)
+    employee_mobile_number=Column(String,nullable=True)
 
     created_at=Column(TIMESTAMP(timezone=True),nullable=False,server_default=func.now())
 

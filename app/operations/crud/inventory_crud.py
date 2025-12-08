@@ -3,8 +3,9 @@ from app.data_formats.enums.user_enum import RoleEnum
 from app.data_formats.enums.product_enum import ProductCategoryEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
-from app.database.models.pg_models.inventory import Inventory
-from app.database.models.pg_models.products import Products
+from app.database.models.pg_models.inventory_model import Inventory
+from app.database.models.pg_models.products_model import Products
+from app.operations.crud.shop_crud import ShopCrud
 from app.utils.uuid_generator import generate_uuid
 from .product_crud import ProductCrud
 
@@ -13,8 +14,12 @@ from .product_crud import ProductCrud
 class InventoryCrud(BaseCrud):
     session:AsyncSession
     current_user_role:RoleEnum
+    current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
 
     @catch_errors
+    @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.ADMIN.value,RoleEnum.SUPER_ADMIN.value])
     async def add(
         self,
@@ -31,7 +36,18 @@ class InventoryCrud(BaseCrud):
         
     ):
         product_category=product_category.value
-        is_exists=(await self.session.execute(
+        is_shop_exists=await ShopCrud(session=self.session,current_user_role='',current_user_id='',current_user_name='',current_user_email='').verify_isexists(shop_id=shop_id)
+        if not is_shop_exists:
+            raise HTTPException(
+                status_code=404,
+                detail=ResponseContentTypDict(
+                    status=404,
+                    msg="Error : Adding product on inventory",
+                    description="Shop doesn't exists"
+                )
+            )
+        
+        is_inven_exists=(await self.session.execute(
             select(Inventory.id).where(
                 and_(
                     Inventory.barcode==barcode,
@@ -40,68 +56,63 @@ class InventoryCrud(BaseCrud):
             )
         )).scalar_one_or_none()
 
-        if is_exists:
+        if is_inven_exists:
             raise HTTPException(
-                status_code=404,
+                status_code=409,
                 detail=ResponseContentTypDict(
-                    status=404,
+                    status=409,
                     succsess=False,
                     msg="Error : Adding product to inventory",
                     description="Product is already exists"
                 )
             )
-        product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role)
-        product_info=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
+        
+        product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role,current_user_email=self.current_user_email,current_user_id=self.current_user_id,current_user_name=self.current_user_name)
+        product_info:dict=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
 
         if product_info:
-            ic("HI",product_info,product_category)
             product_id=product_info['product_id']
             if (
-                product_info['product_name']==product_name and 
-                product_info['product_description']==product_description and 
-                product_info['product_category']==product_category
+                product_info['product_name'].lower()==product_name.lower() and 
+                product_info['product_description'].lower()==product_description.lower() and 
+                product_info['product_category'].lower()==product_category.lower()
             ):
                 product_name=None
                 product_description=None
                 product_category=None
 
-            await self.session.close()
-
         else:
-            await self.session.close()
             product_id=generate_uuid()
             await product_obj.add(product_id=product_id,name=product_name,description=product_description,category=product_category,barcode=barcode)
         
 
-        async with self.session.begin():
-            inventory_id=generate_uuid()
+        inventory_id=generate_uuid()
+        inventory_toadd=Inventory(
+            id=inventory_id,
+            product_id=product_id,
+            shop_id=shop_id,
+            product_name=product_name,
+            product_description=product_description,
+            product_category=product_category,
+            stocks=stocks,
+            buy_price=buy_price,
+            sell_price=sell_price,
+            barcode=barcode,
+            image_urls=image_urls,
+            added_by=cur_user_id,
+        )
 
-            inventory_toadd=Inventory(
-                id=inventory_id,
-                product_id=product_id,
-                shop_id=shop_id,
-                product_name=product_name,
-                product_description=product_description,
-                product_category=product_category,
-                stocks=stocks,
-                buy_price=buy_price,
-                sell_price=sell_price,
-                barcode=barcode,
-                image_urls=image_urls,
-                added_by=cur_user_id,
-            )
+        self.session.add(inventory_toadd)
+        
 
-            self.session.add(inventory_toadd)
-            
-
-            return ORJSONResponse(
-                status_code=201,
-                content={"detail":ResponseContentTypDict(
-                    status=201,
-                    msg="Successfully product added to inventory",
-                    succsess=True
-                )}
-            )
+        return ORJSONResponse(
+            status_code=201,
+            content={"detail":ResponseContentTypDict(
+                status=201,
+                msg="Successfully product added to inventory",
+                succsess=True
+            )}
+        )
     
 
 
@@ -122,19 +133,25 @@ class InventoryCrud(BaseCrud):
         image_urls:Optional[List[str]],
     ):
         product_category=product_category.value
-        product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role)
+        product_obj = ProductCrud(session=self.session,current_user_role=self.current_user_role,current_user_email=self.current_user_email,current_user_id=self.current_user_id,current_user_name=self.current_user_name)
         product_info=(await product_obj.get_byid(product_barcode_id=barcode))['product'] if (not barcode or barcode.strip()!="") else None
 
         if product_info:
-
             if (
-                product_info['product_name']==product_name and 
-                product_info['product_description']==product_description and 
-                product_info['product_category']==product_category.value
+                product_info['product_name'].lower()==product_name.lower() and 
+                product_info['product_description'].lower()==product_description.lower() and 
+                product_info['product_category'].lower()==product_category.value.lower()
             ):
-                product_name=None
-                product_description=None
-                product_category=None
+
+                return ORJSONResponse(
+                    status_code=200,
+                    content={"detail":ResponseContentTypDict(
+                        status=200,
+                        msg="Inventory product updated successfully",
+                        succsess=True
+                    )}
+                )
+
         else:
             raise HTTPException(
                 status_code=404,
@@ -188,7 +205,6 @@ class InventoryCrud(BaseCrud):
                 msg="Inventory product updated successfully",
                 succsess=True
             )}
-        
         )
     
 

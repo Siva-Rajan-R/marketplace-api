@@ -15,3 +15,5 @@ orjson
 redis
 uvloop ; platform_system!="Windows"
 gunicorn ; platform_system!="Windows"
+itsdangerous
+jinja2

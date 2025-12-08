@@ -4,6 +4,7 @@ from ..schemas.shop_schema import AddShopSchema,UpdateShopSchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from app.middlewares.token_verification import verify_token
 from typing import Optional,List
+from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
 
 router=APIRouter(
     tags=["Shop CRUD"]
@@ -12,10 +13,12 @@ router=APIRouter(
 role=RoleEnum.SUPER_ADMIN.value
 
 @router.post("/shops")
-async def add_shop(data:AddShopSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def add_shop(data:AddShopSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ShopCrud(
         session=session,
         current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
         current_user_id=token_data['id']
     ).add(
         name=data.name,
@@ -27,10 +30,12 @@ async def add_shop(data:AddShopSchema,session:AsyncSession=Depends(get_pg_async_
     )
 
 @router.put("/shops")
-async def update_shops(data:UpdateShopSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def update_shops(data:UpdateShopSchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ShopCrud(
         session=session,
         current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
         current_user_id=token_data['id']
     ).update(
         shop_id=token_data['shop_id'],
@@ -43,38 +48,46 @@ async def update_shops(data:UpdateShopSchema,session:AsyncSession=Depends(get_pg
     )
 
 @router.delete("/shops")
-async def delete_shops(session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def delete_shops(session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ShopCrud(
         session=session,
         current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
         current_user_id=token_data['id']
     ).delete(
         shop_id=token_data['shop_id']
     )
 
 @router.get("/shops")
-async def get_shop(session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def get_shop(session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ShopCrud(
         session=session,
         current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
         current_user_id=token_data['id']
     ).get()
 
 
 @router.get("/shops/account")
-async def get_shops_by_account(session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def get_shops_by_account(session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ShopCrud(
         session=session,
         current_user_role='',
+        current_user_name=token_data.get('name',""),
+        current_user_email=token_data.get('email',""),
         current_user_id=token_data['id']
     ).get_by_account(account_id=token_data['id'])
 
 
 @router.get("/shops/shop")
-async def get_shops_byid(session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def get_shops_byid(session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await ShopCrud(
         session=session,
         current_user_role=token_data['role'],
+        current_user_name=token_data.get('name',""),
+        current_user_email=token_data.get('email',""),
         current_user_id=token_data['id']
     ).get_byid(
         shop_id=token_data['shop_id']

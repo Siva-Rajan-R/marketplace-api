@@ -2,9 +2,9 @@ from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,sel
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
-from app.database.models.pg_models.accounts import Accounts
-from app.database.models.pg_models.employees import Employees
-from app.database.models.pg_models.shops import Shops
+from app.database.models.pg_models.accounts_model import Accounts
+from app.database.models.pg_models.employees_model import Employees
+from app.database.models.pg_models.shops_model import Shops
 from app.utils.uuid_generator import generate_uuid
 
 
@@ -12,31 +12,51 @@ from app.utils.uuid_generator import generate_uuid
 class AccountCrud(BaseCrud):
     session:AsyncSession
     current_user_role:RoleEnum
+    current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
 
     @catch_errors
-    async def verify_account_exists(self,account_id_email:str):
-        account=(await self.session.execute(
-            select(
-                Accounts.id,
-                Accounts.email,
-                Accounts.role,
-                Accounts.name,
-            ).where(
-                or_(
-                    Accounts.id==account_id_email,
-                    Accounts.email==account_id_email
-                )
+    async def verify_account_exists(
+        self,
+        account_id_email: str,
+        shop_id: Optional[str | None] = None
+    ):
+        
+        account=(await self.session.execute(select(
+            Accounts.id,
+            Accounts.email,
+            Accounts.role.label("role"),
+            Accounts.name
+        ).where(
+            or_(
+                Accounts.id == account_id_email,
+                Accounts.email == account_id_email
             )
-        )).mappings().one_or_none()
-
+        ))).mappings().one_or_none()
+        account=dict(account) if account else account
+        ic(account,type(account))
+        if not account:
+            return account
+        
+        if account and shop_id:
+            employee=(await self.session.execute(select(Employees.id).where(Employees.account_id==account['id'],Employees.is_accepted==True).limit(1))).mappings().one_or_none()
+            if employee:
+                role=(await self.session.execute(select(Employees.role).where(Employees.account_id==account['id'],Employees.shop_id==shop_id,Employees.is_accepted==True))).scalar_one_or_none()
+                if not role:
+                    return None
+                account['role']=role
+        ic(account)
         return account
+
     
 
     @catch_errors
     @start_db_transaction
-    async def add(self,name:str,email:EmailStr,role:RoleEnum):
-        is_exists=await self.verify_account_exists(account_id_email=email)
-        if is_exists:
+    async def add(self,name:str,email:EmailStr,role:RoleEnum,mobile_number:str):
+        # 1. need to check account exists || 2. need to check the account id exists on employee
+        # 3. then add the account to the table
+        if await self.verify_account_exists(account_id_email=email):
             raise HTTPException(
                 status_code=409,
                 detail=ResponseContentTypDict(
@@ -47,12 +67,25 @@ class AccountCrud(BaseCrud):
                 )
             )
         
+        is_exists_emply_tbl=(await self.session.execute(select(Employees.id).where(Employees.account_id==self.current_user_id).limit(1))).scalar_one_or_none()
+        if is_exists_emply_tbl:
+            raise HTTPException(
+                status_code=409,
+                detail=ResponseContentTypDict(
+                    status=409,
+                    succsess=False,
+                    msg="Error : Adding employee",
+                    description="User already registered as employee"
+                )
+            )
+        
         account_id:str=generate_uuid()
         account_toadd=Accounts(
             id=account_id,
             name=name,
             email=email,
-            role=role.value
+            role=role.value,
+            mobile_number=mobile_number
         )
 
         self.session.add(account_toadd)
@@ -72,7 +105,7 @@ class AccountCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
-    async def update(self,account_id:str,name:str,email:EmailStr,role:RoleEnum):
+    async def update(self,account_id:str,name:str,email:EmailStr,role:RoleEnum,mobile_number:str):
         account_toupdate=update(
             Accounts
         ).where(
@@ -80,7 +113,8 @@ class AccountCrud(BaseCrud):
         ).values(
             name=name,
             email=email,
-            role=role
+            role=role,
+            mobile_number=mobile_number
         ).returning(Accounts.id)
         
         is_updated=(await self.session.execute(account_toupdate)).scalar_one_or_none()

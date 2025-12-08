@@ -7,7 +7,7 @@ load_dotenv()
 
 PG_DATABASE_URL = os.getenv("PG_DATABASE_URL")
 
-ENGINE=create_async_engine(PG_DATABASE_URL,echo=True)
+ENGINE=create_async_engine(PG_DATABASE_URL,echo=False)
 
 BASE=declarative_base()
 

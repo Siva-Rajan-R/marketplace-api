@@ -4,7 +4,8 @@ from app.data_formats.enums.user_enum import RoleEnum
 from app.data_formats.typed_dicts.order_typdict import OrderItemTypDict
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
-from app.database.models.pg_models.orders import Orders
+from app.database.models.pg_models.orders_model import Orders
+from app.operations.crud.shop_crud import ShopCrud
 from app.utils.uuid_generator import generate_uuid
 
 
@@ -12,6 +13,9 @@ from app.utils.uuid_generator import generate_uuid
 class OrderCrud(BaseCrud):
     session:AsyncSession
     current_user_role:RoleEnum
+    current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
 
 
     @catch_errors
@@ -27,6 +31,17 @@ class OrderCrud(BaseCrud):
         customer_number:Optional[str],
         cur_user_id:str
     ):
+        is_shop_exists=await ShopCrud(session=self.session,current_user_role='',current_user_id='',current_user_name='',current_user_email='').verify_isexists(shop_id=shop_id)
+        if not is_shop_exists:
+            raise HTTPException(
+                status_code=404,
+                detail=ResponseContentTypDict(
+                    status=404,
+                    msg="Error : Adding product to orders",
+                    description="Shop doesn't exists"
+                )
+            )
+        
         order_id=generate_uuid()
         order_toadd=Orders(
             id=order_id,

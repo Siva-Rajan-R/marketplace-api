@@ -4,6 +4,7 @@ from ..schemas.inventory_schema import AddInventorySchema,UpdateInventorySchema
 from app.database.configs.pg_config import get_pg_async_session,AsyncSession
 from app.middlewares.token_verification import verify_token
 from typing import Optional,List
+from .import AuthTokenInfoTypDict,AuthRedisValueTypDict
 
 router=APIRouter(
     tags=["Inventory CRUD"]
@@ -12,10 +13,13 @@ router=APIRouter(
 role=RoleEnum.ADMIN
 
 @router.post("/inventories")
-async def add_inventory(data:AddInventorySchema,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def add_inventory(data:AddInventorySchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
-        current_user_role=token_data['role']
+        current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
+        current_user_id=token_data['id']
     ).add(
         stocks=data.stocks,
         buy_price=data.buy_price,
@@ -30,10 +34,13 @@ async def add_inventory(data:AddInventorySchema,session:AsyncSession=Depends(get
     )
 
 @router.put("/inventories")
-async def update_inventory(data:UpdateInventorySchema,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def update_inventory(data:UpdateInventorySchema,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
-        current_user_role=token_data['role']
+        current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
+        current_user_id=token_data['id']
     ).update(
         inventory_id=data.inventory_id,
         stocks=data.stocks,
@@ -48,20 +55,26 @@ async def update_inventory(data:UpdateInventorySchema,session:AsyncSession=Depen
     )
 
 @router.delete("/inventories/{inventory_id}")
-async def delete_inventory(inventory_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def delete_inventory(inventory_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
-        current_user_role=token_data['role']
+        current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
+        current_user_id=token_data['id']
     ).delete(
         shop_id=token_data['shop_id'],
         inventory_id=inventory_id
     )
 
 @router.get("/inventories/shop")
-async def get_inventories(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def get_inventories(q:Optional[str]=Query(""),offset:Optional[int]=Query(0),limit:Optional[int]=Query(10),session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
-        current_user_role=token_data['role']
+        current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
+        current_user_id=token_data['id']
     ).get(
         shop_id=token_data['shop_id'],
         query=q,
@@ -70,10 +83,13 @@ async def get_inventories(q:Optional[str]=Query(""),offset:Optional[int]=Query(0
     )
 
 @router.get("/inventories/{inventory_id}")
-async def get_inventory_byid(inventory_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:dict=Depends(verify_token)):
+async def get_inventory_byid(inventory_id:str,session:AsyncSession=Depends(get_pg_async_session),token_data:AuthTokenInfoTypDict=Depends(verify_token)):
     return await InventoryCrud(
         session=session,
-        current_user_role=token_data['role']
+        current_user_role=token_data['role'],
+        current_user_name=token_data['name'],
+        current_user_email=token_data['email'],
+        current_user_id=token_data['id']
     ).get_byid(
         shop_id=token_data['shop_id'],
         inventory_id=inventory_id

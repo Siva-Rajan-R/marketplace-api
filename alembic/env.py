@@ -25,7 +25,7 @@ config.set_main_option("sqlalchemy.url",db_url)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from app.database.models.pg_models import accounts, employees,inventory,orders,products,shops
+from app.database.models.pg_models import accounts_model, employees_model,inventory_model,orders_model,products_model, register_model,shops_model
 from app.database.configs.pg_config import BASE
 target_metadata = BASE.metadata
 

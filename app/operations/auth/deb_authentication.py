@@ -14,6 +14,8 @@ from app.configs.token_config import pyjwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.configs.redis_config import set_redis
 from app.configs.token_config import JWT_ACCESS_TOKEN_SECRET,JWT_REFRESH_TOKEN_SECRET,JWT_TOKEN_ALGORITHM
+from app.security.url_secret_generator import UrlSecretGenerator
+from app.data_formats.typed_dicts.auth_typdict import AuthOTTInfoTypDict
 from icecream import ic
 
 DEB_AUTH_CREDENTIALS_URL="https://deb-auth-api.onrender.com/auth/authenticated-user"
@@ -41,34 +43,39 @@ class DeBAuthentication(DeBAuthModel):
     
     @staticmethod
     @catch_errors
-    async def get_credentials(code:str,session:AsyncSession):
+    async def get_credentials(code:str,session:AsyncSession,cur_ip:str):
         res=await DeBAuthentication.http_client.post(DEB_AUTH_CREDENTIALS_URL,json={"client_secret":DEB_AUTH_CLIENT_SECRET,"code":code})
 
         if res.status_code==200:
             decoded_token=pyjwt.decode(res.json()['token'],options={"verify_signature": False},algorithms="HS256")
             ic(decoded_token)
-            account_obj=AccountCrud(session=session,current_user_role=RoleEnum.SUPER_ADMIN)
+            account_obj=AccountCrud(
+                session=session,
+                current_user_id="",
+                current_user_role=RoleEnum.SUPER_ADMIN.value,
+                current_user_name="",
+                current_user_email=""
+            )
             account=await account_obj.verify_account_exists(account_id_email=decoded_token['email'])
             ic(account)
             if not account:
-                ic("Your account need to be verify !")
-                # send a email to the marketplace organization
-                await session.close()
-                await account_obj.add(
-                    name=decoded_token['name'],
-                    email=decoded_token['email'],
-                    role=RoleEnum.SUPER_ADMIN
+                raise HTTPException(
+                    status_code=404,
+                    detail=ResponseContentTypDict(
+                        status=404,
+                        msg="Error : While login",
+                        description="User not found, try to register",
+                        succsess=False
+                    )
                 )
-
-                return {'token':None,'waiting':True}
-            
-            await set_redis(key=f"AUTH-CRED-{account['id']}",value=decoded_token,expire=190)
-            token=JwtTokenGenerator.create_token(
-                jwt_alg=JWT_TOKEN_ALGORITHM,
-                jwt_secret=JWT_ACCESS_TOKEN_SECRET,
-                exp_min=5,
-                data={'id':account['id'],'is_temp':True}
+            ott_token_data=AuthOTTInfoTypDict(
+                ip=cur_ip,
+                id=account['id'],
+                name=decoded_token['name'],
+                profile_pic=decoded_token['profile_picture']
             )
+
+            token=UrlSecretGenerator.generate(data=ott_token_data)
         
             return {
                 'token':token,

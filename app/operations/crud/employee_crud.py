@@ -2,20 +2,22 @@ from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,sel
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
-from app.database.models.pg_models.employees import Employees
+from app.database.models.pg_models.employees_model import Employees
 from .account_crud import AccountCrud,Accounts
 from .shop_crud import ShopCrud
-from app.database.models.pg_models.shops import Shops
+from app.database.models.pg_models.shops_model import Shops
 from app.utils.uuid_generator import generate_uuid
-from app.services.email_service import DebEmailService
-from app.database.configs.redis_config import set_redis
-from app.templates.emails_template.employee_template import get_employee_accept_email_content
+from app.utils.email_senders import send_employee_aceept_req_email
+
+
 
 @dataclass(frozen=True)
 class EmployeeCrud(BaseCrud):
     session:AsyncSession
     current_user_role:RoleEnum
     current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
 
     @catch_errors
     async def verify_employee_exists(self,account_id:str,shop_id:str):
@@ -39,11 +41,43 @@ class EmployeeCrud(BaseCrud):
     @catch_errors
     @start_db_transaction
     @verify_role(allowed_roles=[RoleEnum.SUPER_ADMIN.value])
-    async def add(self,shop_id:str,name:str,email:EmailStr,role:RoleEnum,bgt:BackgroundTasks,base_url:str):
-        
+    async def add(self,shop_id:str,name:str,email:EmailStr,role:RoleEnum,bgt:BackgroundTasks):
+        # 1. need to check employee exists for the given shop
+        # 2. need to check is shop exists
+        # 3. then check is present on account table otherwise add it then create a employee table with is_accepted=False
+        # 4. finally send an email for accepting
         tabeles_toadd=[]
         account_id=None
-        account=await AccountCrud(session=self.session,current_user_role=RoleEnum.SUPER_ADMIN).verify_account_exists(account_id_email=email)
+        temp_name=name
+        
+        shop=(
+            await ShopCrud(
+            session=self.session,
+            current_user_id="",
+            current_user_role=RoleEnum.SUPER_ADMIN,
+            current_user_name="",
+            current_user_email=""
+            ).verify_isexists(shop_id=shop_id)
+        )
+
+        if not shop:
+            raise HTTPException(
+                status_code=404,
+                detail=ResponseContentTypDict(
+                    status=404,
+                    msg="Error : Creating employee",
+                    description="Shop id not found"
+                )
+            )
+        
+        account=(await AccountCrud(
+                session=self.session,
+                current_user_id="",
+                current_user_role=RoleEnum.SUPER_ADMIN,
+                current_user_name="",
+                current_user_email=""
+            ).verify_account_exists(account_id_email=email)
+        )
         ic(account)
         if not account:
             account_id=generate_uuid()
@@ -53,13 +87,11 @@ class EmployeeCrud(BaseCrud):
                 email=email,
                 role=role
             )
-
             name=None
-
             tabeles_toadd.append(account_toadd)
         else:
             account_id=account['id']
-            ic("hello")
+
             if await self.verify_employee_exists(account_id=account_id,shop_id=shop_id):
                 raise HTTPException(
                     status_code=409,
@@ -70,21 +102,8 @@ class EmployeeCrud(BaseCrud):
                     )
                 )
             
-            if account['name']==name:
+            if account['name'].lower()==name.lower():
                 name=None
-  
-        shop=(await ShopCrud(session=self.session,current_user_id="",current_user_role=RoleEnum.SUPER_ADMIN).verify_isexists(shop_id=shop_id))
-
-        if not shop:
-            raise HTTPException(
-                    status_code=404,
-                    detail=ResponseContentTypDict(
-                        status=404,
-                        msg="Error : Creating employee",
-                        description="Shop id not found"
-                    )
-                )
-        
 
         employee_id:str=generate_uuid()
         employee_toadd=Employees(
@@ -99,27 +118,20 @@ class EmployeeCrud(BaseCrud):
 
 
         tabeles_toadd.append(employee_toadd)
-
         self.session.add_all(tabeles_toadd)
-
-        employee_accept_id=generate_uuid()
-        email_content=get_employee_accept_email_content(
-            shop_name=shop['name'],
-            role=role.value,
-            accept_url=f"{base_url}auth/accept/employee/{employee_accept_id}",
-            company_name="Marketplace",
-            year=2025
-        )
-
+        
+        # For email sending process
         bgt.add_task(
-            DebEmailService.send,
-            recivers_email=[email],
-            subject=f"Your'e invited for the shop of {shop['name']}",
-            body=email_content,
-            is_html=True   
+            send_employee_aceept_req_email,
+            shop_name=shop['name'],
+            email=email,
+            employee_role=role.value,
+            shop_id=shop_id,
+            account_id=account_id,
+            employee_id=employee_id,
+            employee_name=temp_name
         )
-
-        await set_redis(key=f"EMPLOYEE-ACCEPT-ID-{employee_accept_id}",value={'employee_id':employee_id,'account_id':account['id'],'shop_id':shop_id},expire=500)
+        
         response_content=ResponseContentTypDict(
             status=201,
             msg="Employee created successfully, Waiting for confirmation",
@@ -130,6 +142,7 @@ class EmployeeCrud(BaseCrud):
             status_code=201,
             content={"detail":response_content}
         )
+
 
     async def update(self):
         """this is just a wrapper for basecrud ABC"""
@@ -145,7 +158,8 @@ class EmployeeCrud(BaseCrud):
             and_(
                 Employees.id==employee_id,
                 Employees.shop_id==shop_id,
-                Employees.account_id==account_id
+                Employees.account_id==account_id,
+                Employees.is_accepted==False
             )
         ).values(
             is_accepted=is_accepted
@@ -153,30 +167,10 @@ class EmployeeCrud(BaseCrud):
 
         is_updated=(await self.session.execute(employee_toupdate)).scalar_one_or_none()
 
-        
-        
-        response_content={
-            "detail":ResponseContentTypDict(
-                status=200,
-                msg="Employee updated successfully",
-                succsess=True
-            )
-        }
-
         if not is_updated:
-            response_content=ResponseContentTypDict(
-                status=404,
-                msg="Error : Updating employee accept",
-                succsess=False,
-                description="Employee id not found"
-            )
-
-            raise HTTPException(status_code=404,detail=response_content)
+            return False
         
-        return ORJSONResponse(
-            status_code=200,
-            content=response_content
-        )
+        return True
     
 
     @catch_errors
@@ -198,8 +192,6 @@ class EmployeeCrud(BaseCrud):
 
         is_updated=(await self.session.execute(employee_toupdate)).scalar_one_or_none()
 
-        
-        
         response_content={
             "detail":ResponseContentTypDict(
                 status=200,

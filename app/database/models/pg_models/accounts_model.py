@@ -1,11 +1,12 @@
 from ...import BASE,JSONB,relationship,Column, String,ForeignKey,Integer,TIMESTAMP,func,Boolean
-from .employees import Employees
+from .employees_model import Employees
 
 class Accounts(BASE):
     __tablename__="accounts"
     id=Column(String,primary_key=True)
     name=Column(String,nullable=False)
     email=Column(String,nullable=False,unique=True)
+    mobile_number=Column(String,nullable=False)
     role=Column(String,nullable=False)
     created_at=Column(TIMESTAMP(timezone=True),nullable=False,server_default=func.now())
 

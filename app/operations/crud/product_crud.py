@@ -3,7 +3,7 @@ from app.data_formats.enums.product_enum import ProductCategoryEnum
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
-from app.database.models.pg_models.products import Products
+from app.database.models.pg_models.products_model import Products
 from app.utils.uuid_generator import generate_uuid
 
 
@@ -11,6 +11,9 @@ from app.utils.uuid_generator import generate_uuid
 class ProductCrud(BaseCrud):
     session:AsyncSession
     current_user_role:RoleEnum
+    current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
 
 
     @catch_errors

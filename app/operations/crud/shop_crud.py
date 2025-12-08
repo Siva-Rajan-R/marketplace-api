@@ -2,11 +2,11 @@ from ..import HTTPException,ic,List,Optional,EmailStr,AsyncSession,dataclass,sel
 from app.data_formats.enums.user_enum import RoleEnum
 from app.decoraters.auth_decorators import verify_role
 from app.decoraters.crud_decoraters import start_db_transaction,catch_errors
-from app.database.models.pg_models.shops import Shops
+from app.database.models.pg_models.shops_model import Shops
 from app.data_formats.enums.shop_enum import ShopTypeEnum
 from app.data_formats.typed_dicts.shop_typdict import ShopAddressTypDict
-from app.database.models.pg_models.employees import Employees
-from app.database.models.pg_models.accounts import Accounts
+from app.database.models.pg_models.employees_model import Employees
+from app.database.models.pg_models.accounts_model import Accounts
 from app.utils.uuid_generator import generate_uuid
 
 
@@ -15,6 +15,9 @@ class ShopCrud(BaseCrud):
     session:AsyncSession
     current_user_role:RoleEnum
     current_user_id:str
+    current_user_name:str
+    current_user_email:EmailStr
+    
 
     @catch_errors
     async def verify_isexists(self,shop_id:str):
@@ -41,9 +44,9 @@ class ShopCrud(BaseCrud):
             account_id=self.current_user_id,
             is_verified=False,
             address=address,
-            mobile_number=mobile_number
-            
+            mobile_number=mobile_number  
         )
+
         self.session.add(shop_toadd)
 
         response_content=ResponseContentTypDict(
