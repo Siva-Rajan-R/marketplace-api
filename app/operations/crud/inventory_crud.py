@@ -102,6 +102,7 @@ class InventoryCrud(BaseCrud):
         else:
             product_id=generate_uuid()
             await product_obj.add(product_id=product_id,name=product_name,description=product_description,category=product_category,barcode=barcode)
+            await self.session.flush()
         
 
         inventory_id=generate_uuid()

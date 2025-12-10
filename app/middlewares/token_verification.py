@@ -34,12 +34,12 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
             token_data:AuthTokenInfoTypDict=await verify_ott(token=token,request=request,session=session)
             return {'token_data':token_data,'is_ott':True}
         except Exception as e:
-            ic("Error : => ",e)
+            ic("Error ott: => ",e)
             ...
         try:
             ic("Jwt verification")
             secret=JWT_ACCESS_TOKEN_SECRET
-            if request.url.path=="/auth/token/new":
+            if request.url.path==request.app.url_path_for('auth_tokens_new'):
                 secret=JWT_REFRESH_TOKEN_SECRET
 
             token_data:dict=JwtTokenGenerator.verify_token(
@@ -50,7 +50,7 @@ async def verify_token(request:Request,credentials:HTTPAuthorizationCredentials=
 
             return {'token_data':token_data,'is_ott':False}
         except Exception as e:
-            ic("Error : => ",e)
+            ic("Error jwt: => ",e)
             ...
         
         raise HTTPException(

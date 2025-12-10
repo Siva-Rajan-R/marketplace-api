@@ -115,13 +115,14 @@ async def get_tokens(data:AuthGetTokens,request:Request,token_data:AuthTokenInfo
     return {
         'access_token':access_token,
         'refresh_token':refresh_token,
-        'user_name':token_data['name'],
-        'profile_url':token_data['profile_pic']
+        'shop_id':data.shop_id,
+        'user_name':account['name'],
+        'profile_url':token_data.get('profile_pic')
     }
 
 
 
-@v1_router.get('/token/new')
+@v1_router.get('/token/new',name="auth_tokens_new")
 async def get_new_token(token_data:dict=Depends(verify_token)):
     access_token=DeBAuthentication.get_new_token(data=token_data)
 
